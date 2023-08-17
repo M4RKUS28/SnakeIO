@@ -1,11 +1,13 @@
 #include "snake.h"
-#include "qdebug.h"
 
 #include <QPainterPath>
 
-Snake::Snake(GameField *field, QObject *parent, int num_id, double speed_game)
-    : QThread(parent), field(field), num_id(num_id)
+Snake::Snake(GameField *field, Net *net, QObject *parent, int num_id, double speed_game)
+    : QThread(parent), field(field), net(net), num_id(num_id)
 {
+    if(!net)
+        exit(123);
+
     isAI = false;
     fokus = false;
     reset();
@@ -26,7 +28,7 @@ void Snake::reset()
     for(int i = 0; i < 10; i++)
         pos.append(QPoint(field->getSize() / 2, field->getSize() / 2));
 
-    moves = 100;
+    moves = 250;
     foodNum = 0;
     lebt_noch = true;
     survive_time = 0;
@@ -41,21 +43,14 @@ void Snake::run()
     if(fokus)
         emit foodPosChanged(currentFood);
 
-//    qDebug() << "/*Apple*/: " << currentFood;
-
     while (!isInterruptionRequested()) {
-        //Ai
-//        double buffer[24];
 
-//        lookThingsUp(buffer, currentFood);
+        double buffer[24];
+        lookThingsUp(buffer, currentFood);
+        net->feedForward(buffer);
+        net->getResults(buffer);
 
         if(isAI) {
-            double buffer[24];
-            lookThingsUp(buffer, currentFood);
-            net->feedForward(buffer);
-            net->getResults(buffer);
-
-
             int maxIndex = 0;
             double maxProbability = buffer[0];
 
@@ -83,7 +78,11 @@ void Snake::run()
 
 
         }
-
+        if(fokus) {
+            emit posChanged(pos, num_id);
+            emit textUpdate();
+        }
+        usleep(1000000 * (100.0 / speed_game));
 
         //check outstanding moves
         if(moves <= 0) {
@@ -131,20 +130,19 @@ void Snake::run()
                 emit foodPosChanged(currentFood);
 
 
-            moves += 120;
+            moves += 100;
 
             //Wachse!!
             pos.append(pos.last());
         }
         survive_time++;
 
-        if(fokus) {
-            emit posChanged(pos, num_id);
-            emit textUpdate();
-        }
+//        if(fokus) {
+//            emit posChanged(pos, num_id);
+//            emit textUpdate();
+//        }
+//        usleep(1000000 * (100.0 / speed_game));
 
-//        qDebug() << pos;
-        usleep(1000000 * (100.0 / speed_game));
     }
 
 
@@ -302,11 +300,10 @@ buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
 
 
 
-void Snake::startAI(Net *net)
+void Snake::startAI()
 {
     reset();
     isAI = true;
-    this->net = net;
     this->QThread::start();
 
 }
@@ -314,7 +311,9 @@ void Snake::startAI(Net *net)
 void Snake::start()
 {
     reset();
+    this->setFokus(true);
     this->QThread::start();
+
 }
 
 int Snake::getLegth()

@@ -20,6 +20,8 @@ public:
     Population * population;
 
     void startAIs(int fokus);
+    void stop_and_reset();
+
     void do_evolution(unsigned best, double mutation_rate);
 
 signals:

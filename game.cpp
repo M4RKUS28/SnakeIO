@@ -5,15 +5,14 @@ Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game)
 {
 
     gamefield = new GameField(fieldsize);
-    snakes = new Snake*[snakes_count];
-    for(int i = 0; i < snakes_count; i++)
-        snakes[i] = new Snake(gamefield, this, i, speed_game);
-
     population = new Population("24_SUM_RELU,"
                                 "18_SUM_RELU,"
                                 "18_SUM_RELU,"
                                 "04_SUM_SMAX"
                                 , snakes_count);
+    snakes = new Snake*[snakes_count];
+    for(int i = 0; i < snakes_count; i++)
+        snakes[i] = new Snake(gamefield, population->netAt(i), this, i, speed_game);
 
 }
 
@@ -36,13 +35,27 @@ Game::~Game()
 
 void Game::startAIs(int fokus)
 {
+    stop_and_reset();
     toDO = TO_DO::STARTING;
     this->fokus = fokus;
     this->start();
 }
 
+void Game::stop_and_reset()
+{
+    for (int i = 0; i < snakes_count; ++i) {
+        if(snakes[i]->isRunning()) {
+            snakes[i]->requestInterruption();
+            if(!snakes[i]->wait(3000))
+                snakes[i]->terminate();
+        }
+        snakes[i]->reset();
+    }
+}
+
 void Game::do_evolution(unsigned int best, double mutation_rate)
 {
+    stop_and_reset();
     toDO = TO_DO::EVOLUTION_CALCING;
     this->best = best;
     this->mutation_rate = mutation_rate;
@@ -54,18 +67,19 @@ void Game::run()
     switch (toDO) {
 
     case NONE:
+        std::cout << " Game Thread with no task!" << std::endl;
         break;
     case STARTING:
         for (int i = 0; i < snakes_count; ++i)
             snakes[i]->reset();
 
-        snakes[fokus]->startAI(population->netAt(fokus));
+        snakes[fokus]->startAI();
         this->snakes[fokus]->setFokus(true);
 
         for (int i = 0; i < snakes_count; ++i) {
             if(i == fokus)
                 continue;
-            snakes[i]->startAI(population->netAt(i));
+            snakes[i]->startAI();
             usleep(75);
         }
         break;

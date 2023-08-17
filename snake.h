@@ -13,11 +13,10 @@ class Snake : public QThread
 {
     Q_OBJECT
 public:
-    Snake(GameField * field, QObject * parent, int num_id, double speed_game);
+    Snake(GameField * field, Net *net, QObject * parent, int num_id, double speed_game);
     ~Snake();
 
-    void startAI(Net * net);
-
+    void startAI();
     void start();
     void richtungAendern(QPoint richtung);
 

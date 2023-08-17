@@ -23,33 +23,27 @@ public:
     QGraphicsScene * scene;
     QGraphicsItemGroup * grid;
 
-
     Game * game;
 
-    QGraphicsPathItem   ** snake;
-
+    QGraphicsPathItem   * snake;
+    QGraphicsPathItem   * head;
+    QGraphicsPathItem   * rays;
+    QGraphicsRectItem * border;
     QGraphicsEllipseItem * apple;
 
     int ai_count;
-
     QLabel * tI;
-
-
-    bool show_all = false;
-
     QMutex mux;
+    bool showRays;
+    bool rreconnect;
 
     int getAi_count() const;
-
     void setTI(QLabel *newTI);
-
-
     void setCurrentBestSnake(int id);
     int getId_best() const;
 
 private:
     int id_best;
-
 
 signals:
     void ta();

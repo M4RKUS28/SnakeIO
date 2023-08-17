@@ -3,7 +3,7 @@
 #include <QKeyEvent>
 
 GraphicsView::GraphicsView(QWidget *parent)
-    : QGraphicsView(parent), tI(nullptr)
+    : QGraphicsView(parent), tI(nullptr), showRays(false), rreconnect(true)
 {
     scene = new QGraphicsScene(this);
     this->setScene(scene);
@@ -14,8 +14,8 @@ GraphicsView::GraphicsView(QWidget *parent)
     int abstand = 20;
     int pixel_count = groese * anzahl + abstand * 2;
 
-    ai_count = 2000;
-    double speed_game = 5000.0;
+    ai_count = 3000;
+    double speed_game = 10000.0;
 
     id_best = 0;
 
@@ -24,7 +24,7 @@ GraphicsView::GraphicsView(QWidget *parent)
 
     scene->setSceneRect(0, 0, pixel_count, pixel_count);
 
-    scene->addRect(QRect(abstand, abstand, groese * anzahl, groese * anzahl));
+    border = scene->addRect(QRect(abstand, abstand, groese * anzahl, groese * anzahl));
 
     grid = new QGraphicsItemGroup();
     for(int x = abstand; x <= groese * anzahl + abstand; x += groese) {
@@ -35,34 +35,30 @@ GraphicsView::GraphicsView(QWidget *parent)
     scene->addItem(grid);
     game = new Game(anzahl, ai_count, this, speed_game);
 
-    for (int i = 0; i < (show_all ? ai_count : 1); ++i) {
-        connect(game->snakes[i], SIGNAL(posChanged(QPolygon,int)), this, SLOT(snake_moved(QPolygon,int)));
-        connect(game->snakes[i], SIGNAL(foodPosChanged(QPoint)), this, SLOT(apple_pos_changed(QPoint)));
-        connect(game->snakes[i], SIGNAL(died()), this, SLOT(reconnect()));
-        game->snakes[i]->setFokus(true);
-    }
+    connect(game->snakes[0], SIGNAL(posChanged(QPolygon,int)), this, SLOT(snake_moved(QPolygon,int)));
+    connect(game->snakes[0], SIGNAL(foodPosChanged(QPoint)), this, SLOT(apple_pos_changed(QPoint)));
+    connect(game->snakes[0], SIGNAL(died()), this, SLOT(reconnect()));
+    game->snakes[0]->setFokus(true);
 
 
-
-//    void scoreChanged(int pos);
-
-    snake = new QGraphicsPathItem* [ai_count];
-    for (int i = 0; i < ai_count; ++i) {
-        snake[i] = new QGraphicsPathItem();
-        scene->addItem(snake[i]);
-        snake[i]->setPen(QPen(QBrush(QColor::fromRgb(( 1.0 - (double)i / (double)ai_count) * 200.0 + 55, 0, 0)), 8 ));
-        if(!show_all && i > 0) {
-            snake[i]->hide();
-        }
-    }
+    snake = new QGraphicsPathItem();
+    scene->addItem(snake);
+    snake->setPen(QPen(QBrush(QColor::fromRgb(255, 0, 0)), 8 ));
 
     apple = new QGraphicsEllipseItem();
     scene->addItem(apple);
     apple->setRect(-3 + 10, -3 + 10, 8, 8);
     apple->setPen(QPen(QBrush(Qt::darkGreen), 8));
 
+    rays = new QGraphicsPathItem();
+    scene->addItem(rays);
+    rays->setPen(QPen(Qt::black, 1));
+    rays->show();
 
-
+    head = new QGraphicsPathItem();
+    scene->addItem(head);
+    head->setPen(QPen(Qt::black, 3));
+//    head->show();
 }
 
 GraphicsView::~GraphicsView()
@@ -77,28 +73,24 @@ void GraphicsView::setTI(QLabel *newTI)
 
 void GraphicsView::setCurrentBestSnake(int id)
 {
-    if(!show_all) {
-        disconnect(game->snakes[id_best], SIGNAL(posChanged(QPolygon, int)), this, SLOT(snake_moved(QPolygon, int)));
-        disconnect(game->snakes[id_best], SIGNAL(foodPosChanged(QPoint)), this, SLOT(apple_pos_changed(QPoint)));
-        disconnect(game->snakes[id_best], SIGNAL(died()), this, SLOT(reconnect()));
+    disconnect(game->snakes[id_best], SIGNAL(posChanged(QPolygon, int)), this, SLOT(snake_moved(QPolygon, int)));
+    disconnect(game->snakes[id_best], SIGNAL(foodPosChanged(QPoint)), this, SLOT(apple_pos_changed(QPoint)));
+    disconnect(game->snakes[id_best], SIGNAL(died()), this, SLOT(reconnect()));
 
-        game->snakes[id]->setFokus(true);
 
-        connect(game->snakes[id], SIGNAL(posChanged(QPolygon,int)), this, SLOT(snake_moved(QPolygon,int)));
-        connect(game->snakes[id], SIGNAL(foodPosChanged(QPoint)), this, SLOT(apple_pos_changed(QPoint)));
+    connect(game->snakes[id], SIGNAL(posChanged(QPolygon,int)), this, SLOT(snake_moved(QPolygon,int)));
+    connect(game->snakes[id], SIGNAL(foodPosChanged(QPoint)), this, SLOT(apple_pos_changed(QPoint)));
+    if(rreconnect) {
         connect(game->snakes[id], SIGNAL(died()), this, SLOT(reconnect()));
-
     }
-
-    id_best = id;
+    game->snakes[id]->setFokus(true);
+    apple->setPos(this->game->snakes[id_best]->getCurrentFood() * 20);
 
     std::cout << " Du beobachtest nun: " << id <<std::endl;
 
-    if(tI)
-        tI->setText(QString::number( id_best ));
+    id_best = id;
 
-
-    apple->setPos(this->game->snakes[id_best]->getCurrentFood() * 20);
+    if(tI)  tI->setText(QString::number( id_best ));
 }
 
 int GraphicsView::getId_best() const
@@ -117,18 +109,36 @@ void GraphicsView::snake_moved(QPolygon newPos, int id)
         e *= 20;
         e += QPoint(10, 10);
     }
+
     QPainterPath p;
     p.addPolygon(newPos);
-    snake[0]->setPen(QPen(QBrush(QColor::fromRgb(( 1.0 - (double)id / (double)ai_count) * 100.0 + 155, 0, 0)), 8 ));
+    snake->setPen(QPen(QBrush(QColor::fromRgb(( 1.0 - (double)id / (double)ai_count) * 100.0 + 155, 0, 0)), 8 ));
+    snake->setPath(p);
 
+    QPainterPath p2;
+    p2.addEllipse(newPos.front(), 3, 3);
+    head->setPath(p2);
 
-    if(show_all)
-        snake[id]->setPath(p);
-    else
-        snake[0]->setPath(p);
+    if(showRays) {
+        QPainterPath path;
+        QPointF center = newPos.front(); // Der Punkt, in dem sich die Strahlen schneiden
+        int numLines = 8; // Anzahl der Linien
+        for (int i = 0; i < numLines; ++i) {
+            double angle = 2 * M_PI * i / numLines;
+
+            double endX = center.x() + 0.5 * 1800 * qCos(angle);
+            double endY = center.y() + 0.5 * 1800 * qSin(angle);
+
+            path.moveTo(center);
+            path.lineTo(endX, endY);
+        }
+        rays->setPath(path);
+        if(!rays->isVisible())
+            rays->show();
+    } else if(rays->isVisible())
+        rays->hide();
 
     emit ta();
-
 }
 
 void GraphicsView::apple_pos_changed(QPoint newPos)
