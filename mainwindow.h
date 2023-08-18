@@ -55,6 +55,8 @@ private slots:
 
     void on_pushButton_updateWeights_clicked();
 
+    void newFokus(unsigned id);
+
 private:
     Ui::MainWindow *ui;
     QGraphicsScene * viewNetScene;

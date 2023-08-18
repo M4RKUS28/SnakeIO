@@ -3,13 +3,13 @@
 Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game)
     : QThread(parent), toDO(NONE), snakes_count(snakes_count)
 {
-
     gamefield = new GameField(fieldsize);
     population = new Population("24_SUM_RELU,"
                                 "18_SUM_RELU,"
                                 "18_SUM_RELU,"
                                 "04_SUM_SMAX"
                                 , snakes_count);
+
     snakes = new Snake*[snakes_count];
     for(int i = 0; i < snakes_count; i++)
         snakes[i] = new Snake(gamefield, population->netAt(i), this, i, speed_game);
@@ -21,7 +21,8 @@ Game::~Game()
     for(int i = 0; i < snakes_count; i++) {
         snakes[i]->requestInterruption();
         snakes[i]->quit();
-        if(snakes[i]->wait(2000)) {
+        if(!snakes[i]->wait(3000)) {
+            std::cout << "snakes[i]->terminate(); " << i << std::endl;
             snakes[i]->terminate();
             snakes[i]->wait(2000);
         }
@@ -36,6 +37,7 @@ Game::~Game()
 void Game::startAIs(int fokus)
 {
     stop_and_reset();
+
     toDO = TO_DO::STARTING;
     this->fokus = fokus;
     this->start();
@@ -44,10 +46,13 @@ void Game::startAIs(int fokus)
 void Game::stop_and_reset()
 {
     for (int i = 0; i < snakes_count; ++i) {
+
         if(snakes[i]->isRunning()) {
             snakes[i]->requestInterruption();
-            if(!snakes[i]->wait(3000))
+            if(!snakes[i]->wait(3000)) {
+                std::cout << "TERMINATING..." << __FUNCTION__ << std::endl;
                 snakes[i]->terminate();
+            }
         }
         snakes[i]->reset();
     }
@@ -73,17 +78,18 @@ void Game::run()
         for (int i = 0; i < snakes_count; ++i)
             snakes[i]->reset();
 
-        snakes[fokus]->startAI();
+        snakes[fokus]->startAI(population->netAt(fokus));
         this->snakes[fokus]->setFokus(true);
 
         for (int i = 0; i < snakes_count; ++i) {
             if(i == fokus)
                 continue;
-            snakes[i]->startAI();
+            snakes[i]->startAI(population->netAt(i));
             usleep(75);
         }
         break;
     case EVOLUTION_CALCING:
+        std::cout << " Evolving... " << std::endl;
         population->evolve(best, mutation_rate);
         std::cout << " Evolved!.. " << std::endl;
 

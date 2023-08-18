@@ -32,8 +32,6 @@ void Snake::reset()
     foodNum = 0;
     lebt_noch = true;
     survive_time = 0;
-
-//    emit textUpdate();
 }
 
 void Snake::run()
@@ -45,39 +43,40 @@ void Snake::run()
 
     while (!isInterruptionRequested()) {
 
-        double buffer[24];
-        lookThingsUp(buffer, currentFood);
-        net->feedForward(buffer);
-        net->getResults(buffer);
+        if(net) {
+            double buffer[24];
+            lookThingsUp(buffer, currentFood);
+            net->feedForward(buffer);
+            net->getResults(buffer);
 
-        if(isAI) {
-            int maxIndex = 0;
-            double maxProbability = buffer[0];
+            if(isAI) {
+                int maxIndex = 0;
+                double maxProbability = buffer[0];
 
-            for (int i = 1; i < 4; ++i) {
-                if (buffer[i] > maxProbability) {
-                    maxProbability = buffer[i];
-                    maxIndex = i;
+                for (int i = 1; i < 4; ++i) {
+                    if (buffer[i] > maxProbability) {
+                        maxProbability = buffer[i];
+                        maxIndex = i;
+                    }
+                }
+
+                switch (maxIndex) {
+                case 0:
+                    richtungAendern(QPoint(0, -1));
+                    break;
+                case 1:
+                    richtungAendern(QPoint(0, 1));
+                    break;
+                case 2:
+                    richtungAendern(QPoint(1, 0));
+                    break;
+                case 3:
+                    richtungAendern(QPoint(-1, 0));
+                    break;
                 }
             }
-
-            switch (maxIndex) {
-            case 0:
-                richtungAendern(QPoint(0, -1));
-                break;
-            case 1:
-                richtungAendern(QPoint(0, 1));
-                break;
-            case 2:
-                richtungAendern(QPoint(1, 0));
-                break;
-            case 3:
-                richtungAendern(QPoint(-1, 0));
-                break;
-            }
-
-
         }
+
         if(fokus) {
             emit posChanged(pos, num_id);
             emit textUpdate();
@@ -281,18 +280,18 @@ buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
     double max = size * sqrt(2);
 
     double wallLeft = head.x(); // Abstand zur linken Wand
-    double wallRight = field->getSize() - head.x() - 1; // Abstand zur rechten Wand
+    double wallRight = field->getSize() - head.x() + 1; // Abstand zur rechten Wand
     double wallUp = head.y(); // Abstand zur oberen Wand
-    double wallDown = field->getSize() - head.y() - 1; // Abstand zur unteren Wand
+    double wallDown = field->getSize() - head.y() + 1; // Abstand zur unteren Wand
 
-    buffer[8] = 1.0 / (1.0- wallUp / max); // Links Oben
-    buffer[9] = 1.0 / (1.0 -wallUp/ max); // Oben
-    buffer[10] = 1.0 /(1.0 - wallUp/ max); // Rechts Oben
-    buffer[11] = 1.0 /(1.0 - wallLeft/ max); // Links
-    buffer[12] = 1.0 /(1.0 - wallRight/ max); // Rechts
-    buffer[13] = 1.0 / (1.0 -wallDown/ max); // Links Unten
-    buffer[14] = 1.0 / (1.0 -wallDown/ max); // Unten
-    buffer[15] = 1.0 /(1.0 - wallDown/ max); // Rechts Unten
+    buffer[16] = 0.0; // 1.0 / (1.0- wallUp / max); // Links Oben
+    buffer[17] = 1.0 / (1.0 -wallUp/ max) - 1; // Oben
+    buffer[18] = 0.0; //1.0 /(1.0 - wallUp/ max); // Rechts Oben
+    buffer[19] = 1.0 /(1.0 - wallLeft/ max) - 1; // Links
+    buffer[20] = 1.0 /(1.0 - wallRight/ max) - 1; // Rechts
+    buffer[21] = 0.0; //; 1.0 / (1.0 -wallDown/ max); // Links Unten
+    buffer[22] = 1.0 / (1.0 -wallDown/ max) - 1; // Unten
+    buffer[23] = 0.0; //1.0 /(1.0 - wallDown/ max); // Rechts Unten
 
 //    for(int i = 0; i < 24; i++)
 //        qDebug() << i << buffer[i];
@@ -300,20 +299,26 @@ buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
 
 
 
-void Snake::startAI()
+void Snake::startAI(Net * net)
 {
     reset();
     isAI = true;
+    this->net = net;
+
     this->QThread::start();
 
 }
 
-void Snake::start()
+void Snake::startPlayer(Net *netinfo)
 {
+    if(this->isRunning()) {
+        perror("already running");
+        return;
+    }
     reset();
+    this->net = netinfo;
     this->setFokus(true);
     this->QThread::start();
-
 }
 
 int Snake::getLegth()

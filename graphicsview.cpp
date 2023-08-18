@@ -1,5 +1,6 @@
 #include "graphicsview.h"
 
+#include <QBrush>
 #include <QKeyEvent>
 
 GraphicsView::GraphicsView(QWidget *parent)
@@ -28,9 +29,13 @@ GraphicsView::GraphicsView(QWidget *parent)
 
     grid = new QGraphicsItemGroup();
     for(int x = abstand; x <= groese * anzahl + abstand; x += groese) {
-        grid->addToGroup(new QGraphicsLineItem(QLine(x, abstand, x, groese * anzahl + abstand)));
-        grid->addToGroup(new QGraphicsLineItem(QLine(abstand, x, groese * anzahl + abstand, x)));
+        QGraphicsLineItem * a;
+        grid->addToGroup( ( a = new QGraphicsLineItem(QLine(x, abstand, x, groese * anzahl + abstand))));
+        a->setPen(QPen(QBrush(QColor::fromRgb(160, 160, 160)), 1));
+        grid->addToGroup( ( a = new QGraphicsLineItem(QLine(abstand, x, groese * anzahl + abstand, x))));
+        a->setPen(QPen(QBrush(QColor::fromRgb(160, 160, 160)), 1));
     }
+
 
     scene->addItem(grid);
     game = new Game(anzahl, ai_count, this, speed_game);
@@ -84,13 +89,12 @@ void GraphicsView::setCurrentBestSnake(int id)
         connect(game->snakes[id], SIGNAL(died()), this, SLOT(reconnect()));
     }
     game->snakes[id]->setFokus(true);
+    emit fokus_changed(id);
     apple->setPos(this->game->snakes[id_best]->getCurrentFood() * 20);
-
-    std::cout << " Du beobachtest nun: " << id <<std::endl;
-
     id_best = id;
 
     if(tI)  tI->setText(QString::number( id_best ));
+
 }
 
 int GraphicsView::getId_best() const

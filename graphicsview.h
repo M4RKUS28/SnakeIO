@@ -47,6 +47,7 @@ private:
 
 signals:
     void ta();
+    void fokus_changed(unsigned id);
 
 public slots:
     void snake_moved(QPolygon newPos, int id);

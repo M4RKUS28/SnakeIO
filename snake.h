@@ -16,8 +16,8 @@ public:
     Snake(GameField * field, Net *net, QObject * parent, int num_id, double speed_game);
     ~Snake();
 
-    void startAI();
-    void start();
+    void startAI(Net *net);
+    void startPlayer(Net *netinfo = nullptr);
     void richtungAendern(QPoint richtung);
 
 

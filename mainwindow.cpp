@@ -11,17 +11,56 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->graphicsView->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
     connect(ui->graphicsView, SIGNAL(ta()), this, SLOT(textUpdate()));
+    connect(ui->graphicsView, SIGNAL(fokus_changed(unsigned)), this, SLOT(newFokus(unsigned)));
     connect(ui->graphicsView->game, SIGNAL(finishedEvo()), this, SLOT(restartAIs()));
 
     for (int i = 0; i < ui->graphicsView->getAi_count(); ++i) {
         connect(ui->graphicsView->game->snakes[i], SIGNAL(died()), this, SLOT(updateCount()));
     }
 
-
     viewNetScene = new QGraphicsScene(this);
     ui->graphicsView_ViewNet->setScene(viewNetScene);
-    viewNet = new ViewNet(ui->graphicsView->game->population->netAt(0), QRect(0, 0, 400, 800), 20, false);
+    viewNet = new ViewNet(ui->graphicsView->game->population->netAt(0), QRect(0, 0, 670, 800), 20, false);
     viewNetScene->addItem(viewNet);
+
+    std::vector<std::string> labels;
+    labels.push_back("↖ 🍎 ");
+    labels.push_back("🡑 🍎 ");
+    labels.push_back("↗ 🍎 ");
+    labels.push_back("🡐 🍎 ");
+    labels.push_back("🡒 🍎 ");
+    labels.push_back("↙ 🍎 ");
+    labels.push_back("🡓 🍎 ");
+    labels.push_back("↘ 🍎 ");
+
+    labels.push_back("");
+    labels.push_back("🡑 🐍 ");
+    labels.push_back("");
+    labels.push_back("🡐 🐍 ");
+    labels.push_back("🡒 🐍 ");
+    labels.push_back("");
+    labels.push_back("🡓 🐍 ");
+    labels.push_back("");
+
+    labels.push_back("");
+    labels.push_back("🡑 🚧 ");
+    labels.push_back("");
+    labels.push_back("🡐 🚧 ");
+    labels.push_back("🡒 🚧 ");
+    labels.push_back("");
+    labels.push_back("🡓 🚧 ");
+    labels.push_back("");
+    viewNet->setInputPraefix(labels);
+    viewNet->updateInputLabels(true, 30);
+
+    labels.clear();
+    labels.push_back(" 🡑 Up");
+    labels.push_back(" 🡓 Down");
+    labels.push_back(" 🡒 Right");
+    labels.push_back(" 🡐 Left");
+    viewNet->setOutputSuffix(labels);
+    viewNet->updateOutputLabels(true, true, 30);
+
 
     timer = this->startTimer(1);
 }
@@ -63,8 +102,10 @@ void MainWindow::restartAIs()
     textUpdate();
     if(ui->checkBoxresetapples->isChecked())
         ui->graphicsView->game->gamefield->reset();
+
     ui->graphicsView->game->startAIs(hig_score_id);
     ui->label_count->setText(QString::number(ui->graphicsView->getAi_count()));
+    ui->label_10_gen->setText(QString::number(ui->graphicsView->game->population->getEvolutionNum()));
 }
 
 void MainWindow::textUpdate()
@@ -72,10 +113,11 @@ void MainWindow::textUpdate()
     ui->laength->setText(QString::number(ui->graphicsView->game->snakes[ui->graphicsView->getId_best()]->getLegth()));
     ui->score->setText(QString::number(ui->graphicsView->game->snakes[ui->graphicsView->getId_best()]->getScore()));
     ui->moves_left->setText(QString::number(ui->graphicsView->game->snakes[ui->graphicsView->getId_best()]->getLeftMoves()));
+
     if(ui->doubleSpinBox_speed->value() < 1001.0) {
         if(ui->radioBUpdateViewNet->isChecked()) {
-            viewNet->updateInputLabels(true);
-            viewNet->updateOutputLabels(true);
+            viewNet->updateInputLabels(true, 30);
+            viewNet->updateOutputLabels(true, true, 30);
         }
     }
 }
@@ -84,6 +126,13 @@ void MainWindow::on_pushButton_updateWeights_clicked()
 {
     viewNet->updateWeightsLabels();
 
+}
+
+void MainWindow::newFokus(unsigned int id)
+{
+    hig_score_id = id;
+    viewNet->changeNet(ui->graphicsView->game->population->netAt(id));
+    ui->statusbar->showMessage("Du verfolgst nun AI-Snake " + QString::number(id), 1000);
 }
 
 void MainWindow::updateCount()
@@ -109,9 +158,23 @@ void MainWindow::updateCount()
         }
         ui->highscore->setText( " ID: " + QString::number(hig_score_id) +  " -> Score: " + QString::number(best_score)+ " Länge: " + QString::number(ui->graphicsView->game->snakes[hig_score_id]->getLegth()));
         ui->graphicsView->setCurrentBestSnake ( hig_score_id );
+
+        //update text to best
         viewNet->changeNet(ui->graphicsView->game->population->netAt(hig_score_id));
         textUpdate();
-        ui->graphicsView->game->do_evolution(hig_score_id, ui->doubleSpinBox_learn_rate->value());
+
+
+        //evolute...
+        ui->graphicsView->game->do_evolution(hig_score_id, ui->doubleSpinBox_learn_rate->value()); // --> Thread->  take some time ->
+        //wait for mutation-> free time -> redraw weights!
+        if(ui->radioBUpdateViewNet->isChecked()) {
+            viewNet->updateInputLabels(true, 30);
+            viewNet->updateOutputLabels(true, true, 30);
+            //Redraw and update weights
+            viewNet->updateWeightsLabels();
+        }
+
+
     }
 
 }
@@ -136,6 +199,8 @@ void MainWindow::on_pushButton_store_clicked()
 
 void MainWindow::on_pushButton_load_clicked()
 {
+    hig_score_id = 0;
+
     ui->graphicsView->game->stop_and_reset();
 
     if(ui->graphicsView->game->population->netAt(hig_score_id)->load_from("net_save.csv"))
@@ -147,12 +212,11 @@ void MainWindow::on_pushButton_load_clicked()
 
     ui->graphicsView->game->do_evolution(hig_score_id, ui->doubleSpinBox_learn_rate->value());
     ui->graphicsView->setCurrentBestSnake ( hig_score_id );
-
-
     ui->highscore->setText(QString::number(-1) + " ID: " + QString::number(hig_score_id));
-    ui->graphicsView->setCurrentBestSnake ( hig_score_id );
+
     textUpdate();
     ui->label_count->setText(QString::number(0));
+
 
 }
 
@@ -189,7 +253,8 @@ void MainWindow::on_radioButtonreconnect_clicked(bool checked)
 
 void MainWindow::on_pushButton_2_clicked()
 {
-    ui->graphicsView->game->snakes[0]->start();
+    ui->graphicsView->setCurrentBestSnake ( 0 );
+    ui->graphicsView->game->snakes[0]->startPlayer(ui->graphicsView->game->population->netAt(0));
 }
 
 
