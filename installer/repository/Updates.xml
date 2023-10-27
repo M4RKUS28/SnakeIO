@@ -1,0 +1,27 @@
+<Updates>
+ <ApplicationName>{AnyApplication}</ApplicationName>
+ <ApplicationVersion>1.0.0</ApplicationVersion>
+ <Checksum>true</Checksum>
+ <PackageUpdate>
+  <Name>de.snakeio.main</Name>
+  <DisplayName>SnakeIO</DisplayName>
+  <Description>Install SnakeIO 1.1.0.</Description>
+  <Version>1.0.0</Version>
+  <Default>true</Default>
+  <ReleaseDate>2023-10-27</ReleaseDate>
+  <Script>installscript.qs</Script>
+  <UpdateFile UncompressedSize="71452835" CompressedSize="21268516" OS="Any"/>
+  <DownloadableArchives>generic.7z,iconengines.7z,imageformats.7z,networkinformation.7z,platforms.7z,styles.7z,tls.7z,translations.7z,content.7z</DownloadableArchives>
+  <Licenses>
+   <License file="license.txt" name="GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007"/>
+  </Licenses>
+  <Operations>
+   <Operation name="Extract">
+    <Argument>@TargetDir@/bin/</Argument>
+   </Operation>
+  </Operations>
+  <SHA1>32dd6dec184c456712aad5e5589e0da6df8fd946</SHA1>
+ </PackageUpdate>
+ <SHA1>d33f662460b4429f42fc173e6f7f29cd4981312d</SHA1>
+ <MetadataName>2023-10-27-1924_meta.7z</MetadataName>
+</Updates>
