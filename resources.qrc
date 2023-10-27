@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>1200x600wa.png</file>
+    </qresource>
+</RCC>

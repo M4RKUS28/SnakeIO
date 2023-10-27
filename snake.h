@@ -8,6 +8,9 @@
 #include <QMutex>
 
 
+static int snake_init_length = 10;
+static int snake_init_moves = 250;
+static int snake_add_moves_per_apple = 100;
 
 class Snake : public QThread
 {
@@ -40,10 +43,9 @@ public:
     void reset();
 
 signals:
-    void foodPosChanged(QPoint pos);
+    void foodPosChanged(QPoint pos, int id);
     void posChanged(QPolygon snake, int num_id);
-    void textUpdate();
-    void died();
+    void died(int num_id);
 
 
 private:

@@ -25,13 +25,39 @@ void Snake::reset()
     isAI = false;
     richtung = QPoint(1, 0);
     pos.clear();
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < snake_init_length; i++)
         pos.append(QPoint(field->getSize() / 2, field->getSize() / 2));
 
-    moves = 250;
+    moves = snake_init_moves;
     foodNum = 0;
     lebt_noch = true;
     survive_time = 0;
+}
+
+void Snake::startAI(Net * net)
+{
+    if(this->isRunning()) {
+        perror("already running");
+        return;
+    }
+
+    reset();
+    this->isAI = true;
+    this->net = net;
+    this->QThread::start();
+
+}
+
+void Snake::startPlayer(Net *netinfo)
+{
+    if(this->isRunning()) {
+        perror("already running");
+        return;
+    }
+    reset();
+    this->setFokus(true);
+    this->net = netinfo;
+    this->QThread::start();
 }
 
 void Snake::run()
@@ -39,7 +65,7 @@ void Snake::run()
     foodNum = 0;
     currentFood = field->getApplePos(foodNum);
     if(fokus)
-        emit foodPosChanged(currentFood);
+        emit foodPosChanged(currentFood, num_id);
 
     while (!isInterruptionRequested()) {
 
@@ -77,37 +103,25 @@ void Snake::run()
             }
         }
 
-        if(fokus) {
+        if(fokus)
             emit posChanged(pos, num_id);
-            emit textUpdate();
-        }
         usleep(1000000 * (100.0 / speed_game));
 
+
         //check outstanding moves
-        if(moves <= 0) {
-            emit died();
-            fokus = false;
-            lebt_noch = false;
-            return;
-        }
-
+        bool move_is_ok = true;
         QPoint newPos = pos.front() + richtung;
-
-        //check if run into
-        for(const auto & e : pos) {
-            if(e == newPos) {
-                emit died();
-                lebt_noch = false;
-                fokus = false;
-                return;
-            }
-        }
-
-        if(newPos.x() <= 0 || newPos.x() > field->getSize()
-        || newPos.y() <= 0 || newPos.y() > field->getSize()) {
-            emit died();
-            lebt_noch = false;
+        //check if run into snake itself
+        for(const auto & e : pos)
+            if(e == newPos)    move_is_ok = false;
+        // Wenn keine weiteren moves übrig sind oder check run out of map
+        if(moves <= 0 || newPos.x() <= 0 || newPos.x() > field->getSize()  || newPos.y() <= 0 || newPos.y() > field->getSize())
+            move_is_ok = false;
+        //die if not ok
+        if(!move_is_ok){
+            emit died(num_id);
             fokus = false;
+            lebt_noch = false;
             return;
         }
 
@@ -116,32 +130,19 @@ void Snake::run()
         pos.removeLast();
         moves--;
 
-
         //Try eat
         if(pos.first() == currentFood) {
-
-//            qDebug() << "!!!!/*!*/GEGESSEN!!!";
-
 
             foodNum++;
             currentFood = field->getApplePos(foodNum);
             if(fokus)
-                emit foodPosChanged(currentFood);
-
-
-            moves += 100;
+                emit foodPosChanged(currentFood, num_id);
+            moves += snake_add_moves_per_apple;
 
             //Wachse!!
             pos.append(pos.last());
         }
         survive_time++;
-
-//        if(fokus) {
-//            emit posChanged(pos, num_id);
-//            emit textUpdate();
-//        }
-//        usleep(1000000 * (100.0 / speed_game));
-
     }
 
 
@@ -171,7 +172,6 @@ void Snake::setCurrentFood(QPoint newCurrentFood)
 {
     currentFood = newCurrentFood;
 }
-
 
 
 bool Snake::getLebt_noch() const
@@ -293,33 +293,40 @@ buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
     buffer[22] = 1.0 / (1.0 -wallDown/ max) - 1; // Unten
     buffer[23] = 0.0; //1.0 /(1.0 - wallDown/ max); // Rechts Unten
 
-//    for(int i = 0; i < 24; i++)
-//        qDebug() << i << buffer[i];
+
+    /*buffer[8]  = Links Oben    [ Körper ] = (0|1)
+    buffer[9]  = Oben          [ Körper ] = (0|1)
+    buffer[10] = Rechts Oben   [ Körper ] = (0|1)
+    buffer[11] = Links         [ Körper ] = (0|1)
+    buffer[12] = Rechts        [ Körper ] = (0|1)
+    buffer[13] = Links Unten    [ Körper ] = (0|1)
+    buffer[14] = Unten         [ Körper ] = (0|1)
+    buffer[15] = Rechts Unten  [ Körper ] = (0|1)
+
+    buffer[16] = Links Oben    [ Entf. ] = (0.0 - 1.0)
+    buffer[17] = Oben          [ Entf. ] = (0.0 - 1.0)
+    buffer[18] = Rechts Oben   [ Entf. ] = (0.0 - 1.0)
+    buffer[19] = Links         [ Entf. ] = (0.0 - 1.0)
+    buffer[20] = Rechts        [ Entf. ] = (0.0 - 1.0)
+    buffer[21] = Links Unten    [ Entf. ] = (0.0 - 1.0)
+    buffer[22] = Unten         [ Entf. ] = (0.0 - 1.0)
+    buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
+    */
+
+    auto lineFood = QLineF(head, foodPos);
+
+    buffer[8]  = 1.0 / (moves + 1.0); // übrige Leben
+    buffer[10] = 0.0;
+    buffer[13] = lineFood.angle() / 360.0; // Winkel food
+    buffer[15] = 0.0;
+    buffer[16] = 1.0 - 1.0 / (getScore() + 1.0); // score
+    buffer[18] = 0.0;
+    buffer[21] = 2.0 / (lineFood.length() + 1.0);  // entfernung food
+    buffer[23] = 0.0;
+
 }
 
 
-
-void Snake::startAI(Net * net)
-{
-    reset();
-    isAI = true;
-    this->net = net;
-
-    this->QThread::start();
-
-}
-
-void Snake::startPlayer(Net *netinfo)
-{
-    if(this->isRunning()) {
-        perror("already running");
-        return;
-    }
-    reset();
-    this->net = netinfo;
-    this->setFokus(true);
-    this->QThread::start();
-}
 
 int Snake::getLegth()
 {

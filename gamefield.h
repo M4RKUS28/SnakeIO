@@ -14,6 +14,8 @@ public:
     QPoint getApplePos(int num);
 
     void reset();
+    void popBack();
+    void addCornerApples();
 
     int getSize() const;
 

@@ -22,11 +22,26 @@ public:
     void startAIs(int fokus);
     void stop_and_reset();
 
-    void do_evolution(unsigned best, double mutation_rate);
+    void do_evolution();
+
+    void setDoResetFieldAfterEvo(bool status);
+    void setMutation_rate(double newMutation_rate);
+    void setMut_range(double newMut_range);
+
+    unsigned int getBest() const;
+
+    double getMutation_rate() const;
+
+    double getMut_range() const;
+
+public slots:
+    void auto_restart_ais();
+    void snake_died(int id);
 
 signals:
     void finishedEvo();
-
+    void livingCountChanged(int living);
+    void bestSnakeChanged(int, int, int);
 
 private:
     enum TO_DO{
@@ -38,10 +53,11 @@ private:
 
     void run() override;
 
+    bool doResetFieldAfterEvolution;
 
     int snakes_count;
     unsigned best;
-    double mutation_rate;
+    double mutation_rate, mut_range;
     int fokus;
 
 };

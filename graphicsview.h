@@ -10,7 +10,6 @@
 
 
 #include "game.h"
-#include "qlabel.h"
 
 
 
@@ -20,10 +19,19 @@ class GraphicsView : public QGraphicsView
 public:
     GraphicsView(QWidget * parent);
     ~GraphicsView();
-    QGraphicsScene * scene;
-    QGraphicsItemGroup * grid;
+
 
     Game * game;
+    Snake * currentSnake();
+    Net * currentNet();
+
+    int getAi_count() const;
+    int getConnected_to() const;
+    void connectToSnake(int id);
+
+
+    QGraphicsScene * scene;
+    QGraphicsItemGroup * grid;
 
     QGraphicsPathItem   * snake;
     QGraphicsPathItem   * head;
@@ -31,31 +39,27 @@ public:
     QGraphicsRectItem * border;
     QGraphicsEllipseItem * apple;
 
+    void setShowRays(bool newShowRays);
+
+    void setRreconnect(bool newRreconnect);
+
+private:
     int ai_count;
-    QLabel * tI;
-    QMutex mux;
     bool showRays;
     bool rreconnect;
 
-    int getAi_count() const;
-    void setTI(QLabel *newTI);
-    void setCurrentBestSnake(int id);
-    int getId_best() const;
-
-private:
-    int id_best;
+    int connected_to;
 
 signals:
-    void ta();
+    void textUpdateNeeded();
     void fokus_changed(unsigned id);
 
-public slots:
+private slots:
     void snake_moved(QPolygon newPos, int id);
-    void apple_pos_changed(QPoint newPos);
-    void reconnect();
+    void apple_pos_changed(QPoint newPos, int id);
+    void reconnect(int id);
+    void setNewFokusToBest(int id, int, int);
 
-
-    // QWidget interface
 protected:
     virtual void keyPressEvent(QKeyEvent *event);
 };

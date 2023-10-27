@@ -5,7 +5,7 @@
 #include <QMainWindow>
 #include <QMutex>
 #include "viewnet.h"
-
+#include "dialogueber.h"
 #include <QRect>
 
 QT_BEGIN_NAMESPACE
@@ -20,8 +20,6 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    bool fins;
-    int hig_score_id;
     int timer;
 
 
@@ -29,17 +27,13 @@ public:
 private slots:
     void on_pushButtonStart_clicked();
 
-    void on_pushButton_gridHider_clicked();
-
-
-    void restartAIs();
-
+    void bestSnakeChanged(int, int, int);
+    void evolved();
+    void snakeCountChanged(int ic);
     void textUpdate();
-
-    void updateCount();
+    void newFokus(unsigned id);
 
     void on_pushButton_clicked();
-
 
     void on_pushButton_store_clicked();
 
@@ -55,13 +49,29 @@ private slots:
 
     void on_pushButton_updateWeights_clicked();
 
-    void newFokus(unsigned id);
+
+    void on_radioButtonAutoRate_clicked();
+
+    void on_doubleSpinBox_learn_rate_valueChanged(double arg1);
+
+    void on_doubleSpinBoxMutRange_valueChanged(double arg1);
+
+    void on_checkBoxresetapples_stateChanged(int arg1);
+
+    void on_pushButton_3_clicked();
+
+    void on_pushButton_4_clicked();
+
+    void on_radioButtonShowGrid_clicked(bool checked);
+
+    void on_pushButton_ueber_clicked();
 
 private:
     Ui::MainWindow *ui;
     QGraphicsScene * viewNetScene;
     ViewNet * viewNet;
-
+    DialogUeber * diaUber;
+    QString version = "1.1.0";
 
 
     // QObject interface
