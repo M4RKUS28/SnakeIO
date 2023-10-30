@@ -61,7 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     timer = this->startTimer(1);
 
-    diaUber = new DialogUeber(QApplication::applicationDirPath() + "../maintanacetool.exe", "M$RKUS", "SnakeIo",
+    diaUber = new DialogUeber(QApplication::applicationDirPath() + "../SnakeIOMaintenanceTool.exe", "M$RKUS", "SnakeIo",
                               this->version, Qt::red, this, false, true);
     diaUber->setPixmap(QPixmap("://1200x600wa.png").scaled(128, 128));
     ui->horizontalLayout_theme->insertWidget(0, diaUber->styleHandler()->getCombobox());
