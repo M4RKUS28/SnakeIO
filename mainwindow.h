@@ -71,7 +71,7 @@ private:
     QGraphicsScene * viewNetScene;
     ViewNet * viewNet;
     DialogUeber * diaUber;
-    QString version = "1.1.0";
+    QString version = "1.1.1";
 
 
     // QObject interface

@@ -2,17 +2,17 @@
  <ApplicationName>{AnyApplication}</ApplicationName>
  <ApplicationVersion>1.0.0</ApplicationVersion>
  <Checksum>true</Checksum>
- <SHA1>e5ae68f08ab8301fe6ac5cdb30c53c307ccf73fd</SHA1>
- <MetadataName>2023-10-30-0901_meta.7z</MetadataName>
+ <SHA1>430d3487b9ed79ef287bf4071086612fcb1618b9</SHA1>
+ <MetadataName>2023-10-30-1026_meta.7z</MetadataName>
  <PackageUpdate>
   <Name>de.snakeio.main</Name>
   <DisplayName>SnakeIO</DisplayName>
-  <Description>Install SnakeIO 1.1.0.</Description>
-  <Version>1.0.0</Version>
+  <Description>Install SnakeIO 1.1.1.</Description>
+  <Version>1.1.1</Version>
   <Default>true</Default>
   <ReleaseDate>2023-10-27</ReleaseDate>
   <Script>installscript.qs</Script>
-  <UpdateFile UncompressedSize="71520931" OS="Any" CompressedSize="21336203"/>
+  <UpdateFile UncompressedSize="71520931" CompressedSize="21336267" OS="Any"/>
   <DownloadableArchives>generic.7z,iconengines.7z,imageformats.7z,networkinformation.7z,platforms.7z,styles.7z,tls.7z,translations.7z,content.7z</DownloadableArchives>
   <Licenses>
    <License name="GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007" file="license.txt"/>
@@ -22,6 +22,6 @@
     <Argument>@TargetDir@/bin/</Argument>
    </Operation>
   </Operations>
-  <SHA1>e85a7a8cc642d88e675aae9778b0a4d7d7934aec</SHA1>
+  <SHA1>61352aa86b6617c492ee26c1be9c02986c8bb0c2</SHA1>
  </PackageUpdate>
 </Updates>
