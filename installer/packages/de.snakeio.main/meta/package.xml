@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>SnakeIO</DisplayName>
+    <Description>Install SnakeIO 1.1.0.</Description>
+    <Version>1.0.0</Version>
+    <Default>true</Default>
+
+    <ReleaseDate>2023-10-27</ReleaseDate>
+    <Licenses>
+        <License name="GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007" file="license.txt" />
+    </Licenses>
+
+    <Operations>
+        <Operation name="Extract">
+            <Argument>@TargetDir@/bin/</Argument>
+        </Operation>
+    </Operations>
+	
+	<Script>installscript.qs</Script>
+
+</Package>
