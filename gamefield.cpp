@@ -3,10 +3,10 @@
 
 
 
-
+#include <QDebug>
 
 GameField::GameField(int size)
-    : randomGenerator(QDateTime::currentMSecsSinceEpoch()), size(size)
+    : randomGenerator( (this->seed = QDateTime::currentMSecsSinceEpoch()) ), size(size)
 {
 
 }
@@ -14,14 +14,27 @@ GameField::GameField(int size)
 QPoint GameField::getApplePos(int num)
 {
     QMutexLocker m_lock(&mutex);
-    while(applePos.length() <= num)
+    while(applePos.length() <= num) {
         applePos += QPoint(randomGenerator.bounded(1, size), randomGenerator.bounded(1, size));
+        qDebug() << "New Apple at: [ " << applePos.length()-1 << "]: " << applePos.back();
+    }
     return applePos.at(num);
 }
 
-void GameField::reset()
+void GameField::setSeed(size_t seed)
+{
+    this->reset(seed);
+}
+
+size_t GameField::getSeed()
+{
+    return seed;
+}
+
+void GameField::reset(size_t seed)
 {
     applePos.clear();
+    randomGenerator.seed( (seed != 0) ? (this->seed = seed) : (this->seed = QDateTime::currentMSecsSinceEpoch()) );
 }
 
 void GameField::popBack()

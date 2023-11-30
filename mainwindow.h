@@ -7,6 +7,8 @@
 #include "viewnet.h"
 #include "dialogueber.h"
 #include <QRect>
+#include "startdialog.h"
+#include "graphicsview.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -16,8 +18,10 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+    const QString version = "1.1.2";
+
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow( StartSettings s, QWidget *parent = nullptr);
     ~MainWindow();
 
     int timer;
@@ -35,10 +39,6 @@ private slots:
 
     void on_pushButton_clicked();
 
-    void on_pushButton_store_clicked();
-
-    void on_pushButton_load_clicked();
-
     void on_doubleSpinBox_speed_editingFinished();
 
     void on_radioButtonrays_clicked(bool checked);
@@ -48,9 +48,6 @@ private slots:
     void on_pushButton_2_clicked();
 
     void on_pushButton_updateWeights_clicked();
-
-
-    void on_radioButtonAutoRate_clicked();
 
     void on_doubleSpinBox_learn_rate_valueChanged(double arg1);
 
@@ -66,12 +63,19 @@ private slots:
 
     void on_pushButton_ueber_clicked();
 
+    void on_pushButton_7_clicked();
+
+
+    void on_pushButton_import_clicked();
+
+    void on_pushButton_export_clicked();
+
 private:
     Ui::MainWindow *ui;
     QGraphicsScene * viewNetScene;
     ViewNet * viewNet;
     DialogUeber * diaUber;
-    QString version = "1.1.1";
+    GraphicsView * gameViewWithGame;
 
 
     // QObject interface

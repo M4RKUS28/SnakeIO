@@ -7,13 +7,18 @@
 #include <QMutex>
 
 
+//#define image_based
+
 class GameField
 {
 public:
     GameField(int size);
     QPoint getApplePos(int num);
 
-    void reset();
+    void setSeed(size_t seed);
+    size_t getSeed();
+
+    void reset(size_t seed = 0);
     void popBack();
     void addCornerApples();
 
@@ -23,6 +28,7 @@ private:
     QVector<QPoint> applePos;
     QMutex mutex;
     QRandomGenerator randomGenerator;
+    size_t seed;
 
     int size;
 };

@@ -3,21 +3,32 @@
 #include <QBrush>
 #include <QKeyEvent>
 
-GraphicsView::GraphicsView(QWidget *parent)
-    : QGraphicsView(parent), showRays(false), rreconnect(true),connected_to(0)
+GraphicsView::GraphicsView(StartSettings s, QWidget *parent)
+    : QGraphicsView(parent), showRays(false), rreconnect(true), connected_to(0)
 {
     scene = new QGraphicsScene(this);
     this->setScene(scene);
 
+    ai_count = s.ai_count;
+
     int groese = 20;
-    int anzahl = 39;
+    int anzahl =
+#ifdef image_based
+        12;
+#else
+        /*39;//*/21;//12;//39;
+#endif
     int abstand = 20;
     int pixel_count = groese * anzahl + abstand * 2;
-    ai_count = 3000;
+#ifdef image_based
+    ai_count =    500;
+#endif
+
     double speed_game = 10000.0;
 
+    std::cout << "AIS: " << ai_count << std::endl;
 
-    this->setFixedSize(pixel_count,  pixel_count);
+    // this->setFixedSize(pixel_count,  pixel_count);
     scene->setSceneRect(0, 0, pixel_count, pixel_count);
     border = scene->addRect(QRect(abstand, abstand, groese * anzahl, groese * anzahl));
 
@@ -39,6 +50,9 @@ GraphicsView::GraphicsView(QWidget *parent)
 
     game->snakes[connected_to]->setFokus(true);
 
+
+
+
     //Init Game ui's
     snake = new QGraphicsPathItem();
     scene->addItem(snake);
@@ -56,6 +70,13 @@ GraphicsView::GraphicsView(QWidget *parent)
     head = new QGraphicsPathItem();
     scene->addItem(head);
     head->setPen(QPen(Qt::black, 3));
+}
+
+void GraphicsView::init(int ai_count)
+{
+
+
+
 }
 
 GraphicsView::~GraphicsView()
@@ -209,3 +230,5 @@ void GraphicsView::keyPressEvent(QKeyEvent *event)
         break;
     }
 }
+
+

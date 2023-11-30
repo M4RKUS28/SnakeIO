@@ -5,9 +5,11 @@ win32:RC_ICONS += icon.ico
 
 CONFIG += c++17
 
+
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
 
 SOURCES += \
     game.cpp \
@@ -15,17 +17,23 @@ SOURCES += \
     graphicsview.cpp \
     main.cpp \
     mainwindow.cpp \
-    snake.cpp
+    setupdialog.cpp \
+    snake.cpp \
+    startdialog.cpp
 
 HEADERS += \
     game.h \
     gamefield.h \
     graphicsview.h \
     mainwindow.h \
-    snake.h
+    setupdialog.h \
+    snake.h \
+    startdialog.h
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    setupdialog.ui \
+    startdialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

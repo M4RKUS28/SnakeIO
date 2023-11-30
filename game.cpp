@@ -1,14 +1,27 @@
 #include "game.h"
+#include "qdebug.h"
 
 Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game)
     : QThread(parent), toDO(NONE), doResetFieldAfterEvolution(false), snakes_count(snakes_count), best(0), mutation_rate(0.0025), mut_range(0.2), fokus(0)
 {
     gamefield = new GameField(fieldsize);
+
+#ifdef image_based
+    population = new Population("288_SUM_RELU,"
+                                "100_SUM_RELU,"
+                                "100_SUM_RELU,"
+                                "20_SUM_RELU,"
+                                "04_SUM_SMAX",
+                                snakes_count, 1.0, true);
+
+#else
     population = new Population("24_SUM_RELU,"
                                 "25_SUM_RELU,"
                                 "18_SUM_RELU,"
                                 "04_SUM_SMAX",
                                 snakes_count, 1.0);
+#endif
+
 
 //    population = new Population("2_SUM_RELU,"
 //                                "5_SUM_TANH,"
@@ -19,9 +32,16 @@ Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game)
 //                                1.0);
 
 
+
     snakes = new Snake*[snakes_count];
     for(int i = 0; i < snakes_count; i++) {
-        snakes[i] = new Snake(gamefield, population->netAt(i), this, i, speed_game);
+        snakes[i] = new Snake(gamefield, population->netAt(i), this, i, speed_game,
+#ifdef image_based
+                              Snake::INPUT_MODE::IMAGE_BASED
+#else
+                              Snake::INPUT_MODE::DETAILED_CLASSIC
+#endif
+                              );
         connect(snakes[i], SIGNAL(died(int)), this, SLOT(snake_died(int)));
     }
 
@@ -60,25 +80,32 @@ void Game::startAIs(int fokus)
 void Game::stop_and_reset()
 {
 
+    this->requestInterruption();
+    if(!this->wait(3000)) {
+        std::cout << "TERMINATING... this" << __FUNCTION__ << std::endl;
+        this->terminate();
+    }
+
     for (int i = 0; i < snakes_count; ++i) {
         if(snakes[i]->isRunning()) {
             snakes[i]->requestInterruption();
         }
     }
+
     for (int i = 0; i < snakes_count; ++i) {
         if(snakes[i]->isRunning()) {
-            if(!snakes[i]->wait(3000)) {
+            if(!snakes[i]->wait(1000)) {
                 std::cout << "TERMINATING..." << __FUNCTION__ << std::endl;
                 snakes[i]->terminate();
             }
         }
         snakes[i]->reset();
     }
-    this->requestInterruption();
-    if(!this->wait(3000)) {
-        std::cout << "TERMINATING... this" << __FUNCTION__ << std::endl;
-        this->terminate();
-    }
+    // this->requestInterruption();
+    // if(!this->wait(3000)) {
+    //     std::cout << "TERMINATING... this" << __FUNCTION__ << std::endl;
+    //     this->terminate();
+    // }
 }
 
 void Game::do_evolution()
@@ -117,7 +144,7 @@ void Game::auto_restart_ais()
 }
 
 
-std::mt19937/*minstd_rand*/ generator2(std::random_device{}());
+//FastRandom/*std::mt19937*//*minstd_rand*/ generator3(std::random_device{}());
 
 
 void Game::snake_died(int id)
@@ -175,7 +202,7 @@ void Game::run()
             if(this->isInterruptionRequested())
                 break;
             snakes[i]->startAI(population->netAt(i));
-            usleep(75);
+            usleep(50);
         }
         break;
     case EVOLUTION_CALCING:

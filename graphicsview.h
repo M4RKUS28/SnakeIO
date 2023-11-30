@@ -10,6 +10,7 @@
 
 
 #include "game.h"
+#include "startdialog.h"
 
 
 
@@ -17,8 +18,10 @@ class GraphicsView : public QGraphicsView
 {
     Q_OBJECT
 public:
-    GraphicsView(QWidget * parent);
+    GraphicsView(StartSettings s, QWidget * parent);
     ~GraphicsView();
+
+    void init(int ai_count);
 
 
     Game * game;
@@ -63,6 +66,8 @@ private slots:
 protected:
     virtual void keyPressEvent(QKeyEvent *event);
 };
+
+
 
 
 

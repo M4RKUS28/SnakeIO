@@ -12,11 +12,19 @@ static int snake_init_length = 10;
 static int snake_init_moves = 250;
 static int snake_add_moves_per_apple = 100;
 
+
 class Snake : public QThread
 {
     Q_OBJECT
 public:
-    Snake(GameField * field, Net *net, QObject * parent, int num_id, double speed_game);
+    enum INPUT_MODE {
+        CLASSIC,
+        DETAILED_CLASSIC,
+        IMAGE_BASED
+
+    } input_mode;
+
+    Snake(GameField * field, Net *net, QObject * parent, int num_id, double speed_game, INPUT_MODE input_mode = CLASSIC);
     ~Snake();
 
     void startAI(Net *net);
@@ -24,12 +32,11 @@ public:
     void richtungAendern(QPoint richtung);
 
 
+
     int getLegth();
+    int getMaxMoves();
     size_t getLeftMoves() const;
     size_t getScore() const;
-
-
-
 
     bool getLebt_noch() const;
 
@@ -71,5 +78,7 @@ private:
     int num_id;
     size_t moves;
 };
+
+
 
 #endif // SNAKE_H
