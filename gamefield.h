@@ -9,6 +9,7 @@
 
 //#define image_based
 
+
 class GameField
 {
 public:

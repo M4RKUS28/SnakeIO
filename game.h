@@ -3,6 +3,7 @@
 
 
 
+#include "qcombobox.h"
 #include "snake.h"
 #include "gamefield.h"
 #include "population.h"
@@ -12,7 +13,7 @@ class Game : public QThread
 {
     Q_OBJECT
 public:
-    Game(int fieldsize, int snakes_count, QObject * parent, double speed_game);
+    Game(int fieldsize, int snakes_count, QObject * parent, double speed_game, QComboBox *mu_algo);
     ~Game();
 
     GameField * gamefield;
@@ -20,6 +21,7 @@ public:
     Population * population;
 
     void startAIs(int fokus);
+    void startPlayer();
     void stop_and_reset();
 
     void do_evolution();
@@ -56,10 +58,13 @@ private:
     bool doResetFieldAfterEvolution;
 
     int snakes_count;
+    int living_snakes_count;
+
     unsigned best;
     double mutation_rate, mut_range;
     int fokus;
-
+    QMutex gameCheckFinishedMutex;
+    QComboBox *mu_algo;
 };
 
 #endif // GAME_H

@@ -3,7 +3,7 @@
 #include <QBrush>
 #include <QKeyEvent>
 
-GraphicsView::GraphicsView(StartSettings s, QWidget *parent)
+GraphicsView::GraphicsView(StartSettings s, QWidget *parent, QComboBox * mutAlgo)
     : QGraphicsView(parent), showRays(false), rreconnect(true), connected_to(0)
 {
     scene = new QGraphicsScene(this);
@@ -45,7 +45,7 @@ GraphicsView::GraphicsView(StartSettings s, QWidget *parent)
 
 
     //Game...
-    game = new Game(anzahl, ai_count, this, speed_game);
+    game = new Game(anzahl, ai_count, this, speed_game, mutAlgo);
     connect(game, SIGNAL(bestSnakeChanged(int,int,int)), this, SLOT(setNewFokusToBest(int,int,int)));
 
     game->snakes[connected_to]->setFokus(true);
@@ -117,16 +117,20 @@ int GraphicsView::getAi_count() const
 
 void GraphicsView::connectToSnake(int id)
 {
+    // QMutexLocker m(&reconnectMutex);
+
     disconnect(currentSnake(), SIGNAL(posChanged(QPolygon, int)), this, SLOT(snake_moved(QPolygon, int)));
     disconnect(currentSnake(), SIGNAL(foodPosChanged(QPoint,int)), this, SLOT(apple_pos_changed(QPoint,int)));
     disconnect(currentSnake(), SIGNAL(died(int)), this, SLOT(reconnect(int)));
+    game->snakes[connected_to]->setFokus(false);
 
 
     connect(game->snakes[id], SIGNAL(posChanged(QPolygon,int)), this, SLOT(snake_moved(QPolygon,int)));
     connect(game->snakes[id], SIGNAL(foodPosChanged(QPoint,int)), this, SLOT(apple_pos_changed(QPoint,int)));
-    if(rreconnect) {
-        connect(game->snakes[id], SIGNAL(died(int)), this, SLOT(reconnect(int)));
 
+    if(rreconnect) {
+        // if(rreconnect && game->snakes[id]->getLebt_noch())
+            connect(game->snakes[id], SIGNAL(died(int)), this, SLOT(reconnect(int)));
     }
 
     connected_to = id; // speichere neue connection!
@@ -134,6 +138,10 @@ void GraphicsView::connectToSnake(int id)
     emit fokus_changed(id);
 
     apple->setPos(currentSnake()->getCurrentFood() * 20);
+
+    if(rreconnect && !game->snakes[id]->getLebt_noch()) {
+        reconnect(-1);
+    }
 }
 
 void GraphicsView::snake_moved(QPolygon newPos, int id)
@@ -184,14 +192,18 @@ void GraphicsView::apple_pos_changed(QPoint newPos, int id)
         std::cerr << "wrong id" << std::endl;
 }
 
-void GraphicsView::reconnect(int id)
+void GraphicsView::reconnect(int)
 {
+    // QMutexLocker m(&reconnectMutex);
+
     size_t best = 0;
     size_t best_score = 0;
     bool one_is_living = false;
 
-    if(this->currentSnake()->getLebt_noch())
+    if(this->currentSnake()->getLebt_noch()) {
+        // std::cout << "ERROR: Connected Snake died, but currentSnake is still living!" << std::endl;
         return;
+    }
 
     for (int i = 0; i < ai_count; ++i) {
         if(this->game->snakes[i]->getLebt_noch()) {
@@ -205,6 +217,8 @@ void GraphicsView::reconnect(int id)
 
     if(one_is_living) {
         connectToSnake(best);
+    } else {
+        // std::cout << "No living sake to connect to!" << std::endl;
     }
 }
 

@@ -18,7 +18,7 @@ class GraphicsView : public QGraphicsView
 {
     Q_OBJECT
 public:
-    GraphicsView(StartSettings s, QWidget * parent);
+    GraphicsView(StartSettings s, QWidget * parent, QComboBox *mutAlgo);
     ~GraphicsView();
 
     void init(int ai_count);
@@ -53,6 +53,8 @@ private:
 
     int connected_to;
 
+    QMutex reconnectMutex;
+
 signals:
     void textUpdateNeeded();
     void fokus_changed(unsigned id);
@@ -62,6 +64,8 @@ private slots:
     void apple_pos_changed(QPoint newPos, int id);
     void reconnect(int id);
     void setNewFokusToBest(int id, int, int);
+
+
 
 protected:
     virtual void keyPressEvent(QKeyEvent *event);

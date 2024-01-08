@@ -1,8 +1,8 @@
 #include "game.h"
 #include "qdebug.h"
 
-Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game)
-    : QThread(parent), toDO(NONE), doResetFieldAfterEvolution(false), snakes_count(snakes_count), best(0), mutation_rate(0.0025), mut_range(0.2), fokus(0)
+Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game, QComboBox * mu_algo)
+    : QThread(parent), toDO(NONE), doResetFieldAfterEvolution(false), snakes_count(snakes_count), best(0), mutation_rate(0.0025), mut_range(0.2), fokus(0), mu_algo(mu_algo)
 {
     gamefield = new GameField(fieldsize);
 
@@ -19,7 +19,7 @@ Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game)
                                 "25_SUM_RELU,"
                                 "18_SUM_RELU,"
                                 "04_SUM_SMAX",
-                                snakes_count, 1.0);
+                                snakes_count, 0.3, 1);
 #endif
 
 
@@ -70,11 +70,23 @@ Game::~Game()
 
 void Game::startAIs(int fokus)
 {
-    stop_and_reset();
+    for(int i = 0; i < 1000 && this->isRunning(); i++) {
+        usleep(10000);
+        perror("startAIs DELAYED  -> waiting...");
+    }
+    if(this->isRunning()) {
+        perror("startAIs FAILED - Starter Thread still running:");
+        return;
+    }
 
     toDO = TO_DO::STARTING;
     this->fokus = fokus;
     this->start();
+}
+
+void Game::startPlayer()
+{
+    living_snakes_count = 0;
 }
 
 void Game::stop_and_reset()
@@ -110,7 +122,14 @@ void Game::stop_and_reset()
 
 void Game::do_evolution()
 {
-    stop_and_reset();
+    for(int i = 0; i < 1000 && this->isRunning(); i++) {
+        usleep(10000);
+        perror("START EVO DELAYED  -> waiting...");
+    }
+    if(this->isRunning()) {
+        perror("START EVO FAILED - Starter Thread still running:");
+        return;
+    }
     toDO = TO_DO::EVOLUTION_CALCING;
     this->start();
 }
@@ -137,9 +156,8 @@ void Game::auto_restart_ais()
     if(doResetFieldAfterEvolution)
         gamefield->reset();
 
-
-
     //start ais
+    // std::cout << "RESTART AIs..." << std::endl;
     startAIs(best);
 }
 
@@ -147,19 +165,22 @@ void Game::auto_restart_ais()
 //FastRandom/*std::mt19937*//*minstd_rand*/ generator3(std::random_device{}());
 
 
-void Game::snake_died(int id)
+void Game::snake_died(int)
 {
-    bool finished = true;
-    int ic = 0;
-    for (int i = 0; i < snakes_count; ++i) {
-        if(snakes[i]->getLebt_noch()) {
-            finished = false;
-            ic++;
-        }
-    }
-    emit livingCountChanged(ic);
+    QMutexLocker mutLock(&gameCheckFinishedMutex);
+    living_snakes_count--;
 
-    if(finished) {
+    // bool finished = true;
+    // int ic = 0;
+    // for (int i = 0; i < snakes_count; ++i) {
+    //     if(snakes[i]->getLebt_noch()) {
+    //         finished = false;
+    //         ic++;
+    //     }
+    // }
+    emit livingCountChanged(living_snakes_count);
+
+    if(living_snakes_count == 0 /*finished*/) {
         size_t best_score = 0;
 
         for (int i = 0; i < snakes_count; ++i) {
@@ -188,29 +209,58 @@ void Game::run()
         std::cout << " Game Thread with no task!" << std::endl;
         break;
     case STARTING:
-        for (int i = 0; i < snakes_count; ++i)
-            snakes[i]->reset();
-        if(this->isInterruptionRequested())
-            break;
+        for (int i = 0; i < snakes_count; ++i) {
+            if(snakes[i]->isRunning()) {
+                snakes[i]->requestInterruption();
+            }
+        }
 
+        for (int i = 0; i < snakes_count; ++i) {
+            if(snakes[i]->isRunning()) {
+                if(!snakes[i]->wait(1000)) {
+                    std::cout << "TERMINATING..." << __FUNCTION__ << std::endl;
+                    snakes[i]->terminate();
+                }
+            }
+            // snakes[i]->reset(); in startAI
+        }
+
+        if(this->isInterruptionRequested()) {
+            std::cout << "Break Game Thread" << std::endl;
+            break;
+        }
+
+        living_snakes_count = snakes_count;
         snakes[fokus]->startAI(population->netAt(fokus));
         this->snakes[fokus]->setFokus(true);
 
         for (int i = 0; i < snakes_count; ++i) {
             if(i == fokus)
                 continue;
-            if(this->isInterruptionRequested())
+            if(this->isInterruptionRequested()) {
+                std::cout << "Break Game Thread" << std::endl;
                 break;
+            }
             snakes[i]->startAI(population->netAt(i));
             usleep(50);
         }
         break;
     case EVOLUTION_CALCING:
         std::cout << " Evolving... " << std::endl;
-        population->evolve(best, mutation_rate, mut_range);
+
+        if(mu_algo->currentIndex() == 0) {
+            population->evolve(best, mutation_rate, mut_range);
+        } else {
+            for(int i = 0; i < snakes_count; i++)
+                population->scoreMap()[i] = snakes[i]->getScore();
+            population->evolveWithSimulatedAnnealing(mutation_rate, mut_range, 0.99);
+        }
+
         std::cout << " Evolved!.. " << std::endl;
-        if(this->isInterruptionRequested())
+        if(this->isInterruptionRequested()) {
+            std::cout << "Break Game Thread" << std::endl;
             break;
+        }
         // save backup
         population->netAt(best)->save_to("current_best_ai-bak.csv");
 

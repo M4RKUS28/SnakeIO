@@ -6,7 +6,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    gameViewWithGame = new GraphicsView(s, this);
+    gameViewWithGame = new GraphicsView(s, this, this->ui->comboBoxMutAlgorithm);
     gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
     ui->scrollAreaWidgetContents_2->layout()->addWidget(gameViewWithGame);
     ui->splitter->setSizes(QList<int>{0, this->width() - ui->splitter->widget(2)->width(), ui->splitter->widget(2)->width()});
@@ -21,6 +21,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
         gameViewWithGame->game->snakes[i]->setSpeed(ui->doubleSpinBox_speed->value());
     }
     std::cout << "AIS2: " << std::endl;
+
 
     gameViewWithGame->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
     std::cout << "AIS1.4: " << std::endl;
@@ -44,6 +45,8 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
     viewNetScene->addItem(viewNet);
 
     std::cout << "AIS222: " << std::endl;
+
+
 
     std::vector<std::string> labels;
     labels.push_back("↖ 🍎 ");
@@ -92,9 +95,11 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
         exit(121);
     }
 
+
     diaUber->setPixmap(QPixmap("://1200x600wa.png").scaled(128, 128));
     ui->horizontalLayout_theme->insertWidget(0, diaUber->styleHandler()->getCombobox());
     std::cout << "AIS4333: " << std::endl;
+    ui->pushButton->setDisabled(true);
 
 }
 
@@ -111,11 +116,13 @@ MainWindow::~MainWindow()
 
 
 void MainWindow::on_pushButtonStart_clicked()
-{
+{    
+    this->ui->pushButtonStart->setDisabled(true);
     textUpdate();
     gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
     gameViewWithGame->game->startAIs( gameViewWithGame->getConnected_to() );
     ui->label_count->setText(QString::number(gameViewWithGame->getAi_count()));
+    ui->pushButton->setDisabled(false);
 }
 
 
@@ -145,10 +152,17 @@ void MainWindow::bestSnakeChanged(int id, int val, int leng)
         //Redraw and update weights
         viewNet->updateWeightsLabels();
     }
+
+    this->ui->pushButtonStart->setDisabled(false);
+    ui->pushButton->setDisabled(true);
+
 }
 
 void MainWindow::evolved()
 {
+    this->ui->pushButtonStart->setDisabled(true);
+    ui->pushButton->setDisabled(false);
+
     //Update settings:
 //    if(ui->radioButtonAutoRate->isChecked()) {
 //        ui->doubleSpinBox_learn_rate->setValue( 1.0 / ( 20 * std::pow(gameViewWithGame->game->population->getEvolutionNum() + ui->spinBox_aut_versch->value() - 0.9 , 0.8 ) ) );
@@ -200,7 +214,14 @@ void MainWindow::newFokus(unsigned int id)
 
 void MainWindow::on_pushButton_clicked()
 {
+    ui->pushButton->setDisabled(true);
+    this->ui->pushButtonStart->setDisabled(false);
+
+
     gameViewWithGame->game->stop_and_reset();
+    if(this->gameViewWithGame->game->isRunning())
+        this->gameViewWithGame->game->quit();
+    // ui->pushButton->setDisabled(false);
 }
 
 
@@ -295,8 +316,8 @@ void MainWindow::on_pushButton_2_clicked()
 
 //    return;
 
-
-
+    ui->pushButton->setDisabled(false);
+    gameViewWithGame->game->startPlayer();
     gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
     gameViewWithGame->currentSnake()->startPlayer(gameViewWithGame->currentNet());
 }
@@ -386,6 +407,8 @@ void MainWindow::on_pushButton_import_clicked()
         return;
     }
 
+
+
     QFile ff(d + "apple.seed");
     if( !ff.exists() || !ff.open(QFile::ReadOnly)  ) {
         ui->statusbar->showMessage("Warnung: " + d + "apple.seed nicht gefunden", 2000);
@@ -406,6 +429,7 @@ void MainWindow::on_pushButton_import_clicked()
                 QApplication::processEvents();
             }
         }
+
     } else {
         //Fast load
         if(gameViewWithGame->game->population->netAt(gameViewWithGame->game->getBest())->load_from(d.toStdString() + "snake.csv"))

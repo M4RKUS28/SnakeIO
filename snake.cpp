@@ -48,7 +48,6 @@ void Snake::startAI(Net * net)
     this->isAI = true;
     this->net = net;
     this->QThread::start();
-
 }
 
 void Snake::startPlayer(Net *netinfo)
@@ -132,9 +131,10 @@ void Snake::run()
             move_is_ok = false;
         //die if not ok
         if(!move_is_ok){
-            emit died(num_id);
             fokus = false;
             lebt_noch = false;
+
+            emit died(num_id);
             return;
         }
 
@@ -163,7 +163,8 @@ void Snake::run()
         survive_time++;
     }
 
-
+    lebt_noch = false;
+    emit died(num_id);
 }
 
 int Snake::getMaxMoves()

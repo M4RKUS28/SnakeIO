@@ -16,7 +16,7 @@ QPoint GameField::getApplePos(int num)
     QMutexLocker m_lock(&mutex);
     while(applePos.length() <= num) {
         applePos += QPoint(randomGenerator.bounded(1, size), randomGenerator.bounded(1, size));
-        qDebug() << "New Apple at: [ " << applePos.length()-1 << "]: " << applePos.back();
+        // qDebug() << "New Apple at: [ " << applePos.length()-1 << "]: " << applePos.back();
     }
     return applePos.at(num);
 }
