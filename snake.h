@@ -3,6 +3,8 @@
 
 #include "gamefield.h"
 #include "net.h"
+#include "agent.h"
+
 #include "qpolygon.h"
 #include <QThread>
 #include <QMutex>
@@ -17,14 +19,15 @@ class Snake : public QThread
 {
     Q_OBJECT
 public:
-    enum INPUT_MODE {
+    enum MODE {
         CLASSIC,
         DETAILED_CLASSIC,
-        IMAGE_BASED
+        IMAGE_BASED,
+        TURN_MODE
 
     } input_mode;
 
-    Snake(GameField * field, Net *net, QObject * parent, int num_id, double speed_game, INPUT_MODE input_mode = CLASSIC);
+    Snake(GameField * field, Net *net, QObject * parent, int num_id, double speed_game, MODE input_mode = CLASSIC);
     ~Snake();
 
     void startAI(Net *net);
@@ -68,6 +71,7 @@ private:
     GameField * field;
     QPoint currentFood;
     Net * net;
+    Agent * agent;
     QPolygon pos;
     QPoint richtung;
     bool isAI;

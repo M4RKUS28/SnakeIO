@@ -15,12 +15,19 @@ Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game, 
                                 snakes_count, 1.0, true);
 
 #else
+    // population = new Population("24_SUM_RELU,"
+    //                             "25_SUM_RELU,"
+    //                             "18_SUM_RELU,"
+    //                             "04_SUM_SMAX",
+    //                             snakes_count, 0.3, 1);
+
+
     population = new Population("24_SUM_RELU,"
-                                "25_SUM_RELU,"
-                                "18_SUM_RELU,"
-                                "04_SUM_SMAX",
+                                "40_SUM_RELU,"
+                                "4_SUM_IDENTITY",
                                 snakes_count, 0.3, 1);
 #endif
+
 
 
 //    population = new Population("2_SUM_RELU,"
@@ -37,9 +44,9 @@ Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game, 
     for(int i = 0; i < snakes_count; i++) {
         snakes[i] = new Snake(gamefield, population->netAt(i), this, i, speed_game,
 #ifdef image_based
-                              Snake::INPUT_MODE::IMAGE_BASED
+                              Snake::MODE::IMAGE_BASED
 #else
-                              Snake::INPUT_MODE::DETAILED_CLASSIC
+                              Snake::MODE::DETAILED_CLASSIC
 #endif
                               );
         connect(snakes[i], SIGNAL(died(int)), this, SLOT(snake_died(int)));

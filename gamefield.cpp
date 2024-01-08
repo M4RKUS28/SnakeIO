@@ -11,6 +11,7 @@ GameField::GameField(int size)
 
 }
 
+
 QPoint GameField::getApplePos(int num)
 {
     QMutexLocker m_lock(&mutex);

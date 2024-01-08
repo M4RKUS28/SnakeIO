@@ -3,9 +3,11 @@
 
 #include <QPainterPath>
 
-Snake::Snake(GameField *field, Net *net, QObject *parent, int num_id, double speed_game, INPUT_MODE input_mode)
+Snake::Snake(GameField *field, Net *net, QObject *parent, int num_id, double speed_game, MODE input_mode)
     : QThread(parent), input_mode(input_mode), field(field), net(net), num_id(num_id)
 {
+    agent = new Agent(net, 0.9, 0.0, 100);
+
     if(!net) {
         std::cout << "Netless snake!" << std::endl;
         exit(123);
@@ -62,6 +64,28 @@ void Snake::startPlayer(Net *netinfo)
     this->QThread::start();
 }
 
+
+int argmax2(const Action& vec) {
+    if (vec.empty()) {
+        // Handle the case where the vector is empty
+        return -1; // or any other appropriate value
+    }
+
+    // Use std::max_element to find the iterator pointing to the maximum element
+    auto maxElementIterator = std::max_element(vec.begin(), vec.end());
+
+    // Check if maxElementIterator is valid before getting the index
+    if (maxElementIterator != vec.end()) {
+        // Calculate the index by subtracting the beginning iterator
+        int index = std::distance(vec.begin(), maxElementIterator);
+        return index;
+    } else {
+        // Handle the case where the vector is empty or other specific conditions
+        return -1; // or any other appropriate value
+    }
+}
+
+
 void Snake::run()
 {
     foodNum = 0;
@@ -69,11 +93,38 @@ void Snake::run()
     if(fokus)
         emit foodPosChanged(currentFood, num_id);
 
+    int buf_size = 1;
+    switch (input_mode) {
+    case Snake::CLASSIC:
+        buf_size = 24;
+        break;
+    case Snake::DETAILED_CLASSIC:
+        buf_size = 24;
+        break;
+    case Snake::IMAGE_BASED:
+        buf_size = (field->getSize() * field->getSize() * 2);
+        break;
+    case Snake::TURN_MODE:
+        buf_size = 11;
+        break;
+    }
+
+    double buffer[buf_size];
+    State state, stateAfter;
+    Action action = {0, 0, 0, 0};
+    double reward = 1.0;
+    bool isOver = false;
+
     while (!isInterruptionRequested()) {
 
         if(net) {
-            double buffer[ input_mode == INPUT_MODE::IMAGE_BASED ? (field->getSize() * field->getSize() * 2) : 24];
+
             lookThingsUp(buffer, currentFood);
+
+
+            for(int i = 0; i < buf_size; i++)
+                state.push_back(buffer[i]);
+
             if(isInterruptionRequested())
                 break;
             net->feedForward(buffer);
@@ -84,29 +135,36 @@ void Snake::run()
                 break;
 
             if(isAI) {
-                int maxIndex = 0;
-                double maxProbability = buffer[0];
 
-                for (int i = 1; i < 4; ++i) {
-                    if (buffer[i] > maxProbability) {
-                        maxProbability = buffer[i];
-                        maxIndex = i;
+                if(false /*&& input_mode == Snake::TURN_MODE*/) {
+
+                } else {
+                    int maxIndex = 0;
+                    double maxProbability = buffer[0];
+
+                    for (int i = 1; i < 4; ++i) {
+                        if (buffer[i] > maxProbability) {
+                            maxProbability = buffer[i];
+                            maxIndex = i;
+                        }
                     }
-                }
 
-                switch (maxIndex) {
-                case 0:
-                    richtungAendern(QPoint(0, -1));
-                    break;
-                case 1:
-                    richtungAendern(QPoint(0, 1));
-                    break;
-                case 2:
-                    richtungAendern(QPoint(1, 0));
-                    break;
-                case 3:
-                    richtungAendern(QPoint(-1, 0));
-                    break;
+                    switch (/*maxIndex*/ argmax2(agent->getAction(state)) ) {
+                    case 0:
+                        richtungAendern(QPoint(0, -1));
+                        break;
+                    case 1:
+                        richtungAendern(QPoint(0, 1));
+                        break;
+                    case 2:
+                        richtungAendern(QPoint(1, 0));
+                        break;
+                    case 3:
+                        richtungAendern(QPoint(-1, 0));
+                        break;
+                    }
+
+                    action.at(maxIndex) = 1;
                 }
             }
         }
@@ -135,6 +193,13 @@ void Snake::run()
             lebt_noch = false;
 
             emit died(num_id);
+
+
+            lookThingsUp(buffer, currentFood);
+            for(int i = 0; i < buf_size; i++)
+                stateAfter.push_back(buffer[i]);
+            agent->addStep(state, stateAfter, action, -10, true);
+
             return;
         }
 
@@ -159,8 +224,16 @@ void Snake::run()
 
             //Wachse!!
             pos.append(pos.last());
+
+            reward = 10;
         }
         survive_time++;
+
+
+        lookThingsUp(buffer, currentFood);
+        for(int i = 0; i < buf_size; i++)
+            stateAfter.push_back(buffer[i]);
+        agent->addStep(state, stateAfter, action, reward, false);
     }
 
     lebt_noch = false;
@@ -217,6 +290,25 @@ size_t Snake::getScore() const
 void Snake::lookThingsUp( double *buffer, const QPoint &foodPos)
 {
     switch (input_mode) {
+    case Snake::TURN_MODE:
+        /*
+        buffer[0]  = # Danger straight
+        buffer[1]  = # Danger right
+        buffer[2]  = # Danger left
+
+        buffer[3]  = # Move direction l
+        buffer[4]  = # Move direction r
+        buffer[5]  = # Move direction u
+        buffer[6]  = # Move direction d
+
+        buffer[7]  = # Food location l
+        buffer[8]  = # Food location r
+        buffer[9]  = # Food location u
+        buffer[10] = # Food location d
+        */
+
+
+        break;
     case DETAILED_CLASSIC:
     {
 
@@ -288,7 +380,7 @@ void Snake::lookThingsUp( double *buffer, const QPoint &foodPos)
                 buffer[7] = 1.0; // Rechts unten
             } else if (dx > 0.0 && dy < 0.0) {
                 buffer[0] = 1.0; // Links oben
-            } else if (dx < 0.0 && dy > 0.0f )  {
+            } else if (dx < 0.0 && dy > 0.0) {
                 buffer[5] = 1.0; // Links unten
             } else if (dx < 0.0 && dy < 0.0) {
                 buffer[2] = 1.0; // Rechts oben
@@ -487,6 +579,8 @@ void Snake::lookThingsUp( double *buffer, const QPoint &foodPos)
 
         break;
     }
+
+
     }
 
 

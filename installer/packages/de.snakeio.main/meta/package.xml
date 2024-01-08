@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
     <DisplayName>SnakeIO</DisplayName>
-    <Description>Install SnakeIO 1.1.2.</Description>
-    <Version>1.1.2</Version>
+    <Description>Install SnakeIO 1.1.3.</Description>
+    <Version>1.1.3</Version>
     <Default>true</Default>
 
-    <ReleaseDate>2023-10-30</ReleaseDate>
+    <ReleaseDate>2023-12-30</ReleaseDate>
     <Licenses>
         <License name="GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007" file="license.txt" />
     </Licenses>
