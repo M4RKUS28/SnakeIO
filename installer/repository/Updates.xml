@@ -1,0 +1,24 @@
+<Updates>
+ <ApplicationName>{AnyApplication}</ApplicationName>
+ <ApplicationVersion>1.0.0</ApplicationVersion>
+ <Checksum>true</Checksum>
+ <PackageUpdate>
+  <Name>de.SnakeIO.main</Name>
+  <DisplayName>SnakeIO 1.1.2</DisplayName>
+  <Description>sneesnaaanake</Description>
+  <Version>1.1.2</Version>
+  <Default>true</Default>
+  <ReleaseDate>2024-04-04</ReleaseDate>
+  <Script>installscript.qs</Script>
+  <UpdateFile UncompressedSize="72811439" CompressedSize="21938919" OS="Any"/>
+  <DownloadableArchives>generic.7z,iconengines.7z,imageformats.7z,networkinformation.7z,platforms.7z,styles.7z,tls.7z,translations.7z,content.7z</DownloadableArchives>
+  <Operations>
+   <Operation name="Extract">
+    <Argument>@TargetDir@/bin/</Argument>
+   </Operation>
+  </Operations>
+  <SHA1>ec419735e88be82bedb3303528f4daac71074adb</SHA1>
+ </PackageUpdate>
+ <SHA1>ee8a585bcfc6847398b191797c3589ab6e9687d4</SHA1>
+ <MetadataName>2024-04-04-0019_meta.7z</MetadataName>
+</Updates>
