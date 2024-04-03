@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+   <DisplayName>SnakeIO 1.1.2</DisplayName>
+   <Description>sneesnaaanake</Description>
+   <Version>1.1.2</Version>
+   <Default>true</Default>
+   <ReleaseDate>2024-04-04</ReleaseDate>
+   <Operations>
+        <Operation name="Extract">
+              <Argument>@TargetDir@/bin/</Argument>
+        </Operation>
+   </Operations>
+   <Script>installscript.qs</Script>
+</Package> 

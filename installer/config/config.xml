@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
-    <Name>SnakeIO</Name>
-    <Version>1.0.0</Version>
+<Name>SnakeIO</Name>
+    <Version>1.1.3</Version>
     <Title><Name>SnakeIO</Name> Installer</Title>
-    <Publisher>Markus</Publisher>
-    <StartMenuDir>SnakeIO</StartMenuDir>
-    <TargetDir>@ApplicationsDirUser@/SnakeIO/</TargetDir>
-    <WizardDefaultWidth>800</WizardDefaultWidth>
-    <WizardDefaultHeight>500</WizardDefaultHeight>
-	<MaintenanceToolName>SnakeIOMaintenanceTool</MaintenanceToolName>
-	<RemoteRepositories>
-     <Repository>
-             <Url>https://code.obermui.de/markus/SnakeIO/raw/branch/main/installer/repository</Url>
-             <Enabled>1</Enabled>
-             <DisplayName>Gitea Repo</DisplayName>
-     </Repository>
-</RemoteRepositories>
-	
+      <Publisher>Markus</Publisher>
+        <StartMenuDir>SnakeIO</StartMenuDir>
+        <TargetDir>@ApplicationsDir@/SnakeIO/</TargetDir>
+        <WizardDefaultWidth>800</WizardDefaultWidth>
+        <WizardDefaultHeight>500</WizardDefaultHeight>
+        <MaintenanceToolName>SnakeIOMaintenanceTool</MaintenanceToolName>
+        <RemoteRepositories>
+            <Repository>
+                <Url>https://code.obermui.de/Markus/SnakeIO/raw/branch/main/installer/repository</Url>
+                <Enabled>1</Enabled>
+                <DisplayName>Main-Repo</DisplayName>
+            </Repository>
+        </RemoteRepositories>
 </Installer>

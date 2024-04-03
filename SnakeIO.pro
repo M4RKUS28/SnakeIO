@@ -12,28 +12,29 @@ CONFIG += c++17
 
 
 SOURCES += \
-    game.cpp \
-    gamefield.cpp \
-    graphicsview.cpp \
-    main.cpp \
-    mainwindow.cpp \
-    setupdialog.cpp \
-    snake.cpp \
-    startdialog.cpp
+    src/game.cpp \
+    src/pvemainwindow.cpp \
+    src/gamefield.cpp \
+    src/graphicsview.cpp \
+    src/main.cpp \
+    src/mainwindow.cpp \
+    src/snake.cpp \
+    src/startdialog.cpp
 
 HEADERS += \
-    game.h \
-    gamefield.h \
-    graphicsview.h \
-    mainwindow.h \
-    setupdialog.h \
-    snake.h \
-    startdialog.h
+    src/game.h \
+    src/pvemainwindow.h \
+    src/gamefield.h \
+    src/graphicsview.h \
+    src/mainwindow.h \
+    src/snake.h \
+    src/startdialog.h
 
 FORMS += \
-    mainwindow.ui \
-    setupdialog.ui \
-    startdialog.ui
+    src/pvemainwindow.ui \
+    src/mainwindow.ui \
+    src/setupdialog.ui \
+    src/startdialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
