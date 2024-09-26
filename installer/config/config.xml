@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Installer>
 <Name>SnakeIO</Name>
-    <Version>1.1.3</Version>
+    <Version>1.1.2</Version>
     <Title><Name>SnakeIO</Name> Installer</Title>
+    <InstallerApplicationIcon>installerIcon1</InstallerApplicationIcon>
+    <InstallerWindowIcon>installerIcon2</InstallerWindowIcon>
       <Publisher>Markus</Publisher>
         <StartMenuDir>SnakeIO</StartMenuDir>
         <TargetDir>@ApplicationsDir@/SnakeIO/</TargetDir>
@@ -11,7 +13,7 @@
         <MaintenanceToolName>SnakeIOMaintenanceTool</MaintenanceToolName>
         <RemoteRepositories>
             <Repository>
-                <Url>https://code.obermui.de/Markus/SnakeIO/raw/branch/main/installer/repository</Url>
+                <Url>https://code.obermui.de/Markus/SnakeIO/media/branch/main/installer/repository</Url>
                 <Enabled>1</Enabled>
                 <DisplayName>Main-Repo</DisplayName>
             </Repository>
