@@ -3,8 +3,6 @@
 <Name>SnakeIO</Name>
     <Version>1.1.2</Version>
     <Title><Name>SnakeIO</Name> Installer</Title>
-    <InstallerApplicationIcon>installerIcon1</InstallerApplicationIcon>
-    <InstallerWindowIcon>installerIcon2</InstallerWindowIcon>
       <Publisher>Markus</Publisher>
         <StartMenuDir>SnakeIO</StartMenuDir>
         <TargetDir>@ApplicationsDir@/SnakeIO/</TargetDir>

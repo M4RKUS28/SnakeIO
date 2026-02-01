@@ -6,9 +6,9 @@ Component.prototype.createOperations = function() {
    component.createOperations();
    if(systemInfo.productType === "windows") {
 
-      component.addOperation("CreateShortcut", "@TargetDir@/bin/SnakeIO.exe", "@StartMenuDir@/SnakeIO.lnk", "description=Snaaaaake....");
+      component.addOperation("CreateShortcut", "@TargetDir@/bin/SnakeIO.exe", "@StartMenuDir@/SnakeIO.lnk", "description=");
 
-      component.addOperation("CreateShortcut", "@TargetDir@/bin/SnakeIO.exe", "@HomeDir@/Desktop/SnakeIO.lnk", "description=Snaaaaake....");
+      component.addOperation("CreateShortcut", "@TargetDir@/bin/SnakeIO.exe", "@HomeDir@/Desktop/SnakeIO.lnk", "description=");
 
    }
 }

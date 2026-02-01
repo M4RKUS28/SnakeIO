@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package>
    <DisplayName>SnakeIO 1.1.2</DisplayName>
-   <Description>Snaaaaake....</Description>
+   <Description></Description>
    <Version>1.1.2</Version>
    <Default>true</Default>
-   <ReleaseDate>2024-09-26</ReleaseDate>
-   <Licenses>
-   <License name="GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007" file="license.txt" />
-   </Licenses>
+   <ReleaseDate>2025-01-16</ReleaseDate>
    <Operations>
         <Operation name="Extract">
               <Argument>@TargetDir@/bin/</Argument>
