@@ -1,0 +1,9 @@
+[submodule "libs/MUpdaterLib"]
+	path = libs/MUpdaterLib
+	url = https://github.com/M4RKUS28/MUpdaterLib
+[submodule "libs/GenNet"]
+	path = libs/GenNet
+	url = https://github.com/M4RKUS28/GenNet
+[submodule "libs/ViewNet"]
+	path = libs/ViewNet
+	url = https://github.com/M4RKUS28/ViewNet
