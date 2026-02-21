@@ -12,6 +12,7 @@ int Snake::snake_add_moves_per_apple = 100;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    qDebug() << "TEST";
     StartDialog s;
 
     while(s.exec() != QDialog::DialogCode::Rejected && s.getStartSettings().appmode != StartSettings::APPMODE::EXIT) {
