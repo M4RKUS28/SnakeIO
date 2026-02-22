@@ -13,6 +13,7 @@ struct StartSettings {
         TRAINING,
         SINGLE_PLAYER,
         PLAYER_VS_AI,
+        DEMO,
         EXIT
     } appmode = TRAINING;
 
@@ -53,6 +54,7 @@ private slots:
     void on_pushButton_2_clicked();   // Single Player
     void on_pushButton_4_clicked();   // AI Training
     void on_pushButton_8_clicked();   // Exit
+    void onDemoClicked();              // Demo Mode
 
     // --- Training page slots (wired in code) ---
     void onPreConfigChanged(int index);

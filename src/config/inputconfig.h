@@ -114,6 +114,26 @@ enum class InputFeature {
     LAST_OUTPUT_DOWN,
     LAST_OUTPUT_RIGHT,
     LAST_OUTPUT_LEFT,
+
+    // -----------------------------------------------------------------------
+    // CONSTANTS  (trivial neurons — always emit a fixed value)
+    // Useful to pad an existing architecture to match a trained model that
+    // had dead/unused input neurons.
+    // -----------------------------------------------------------------------
+    CONST_ZERO,   // always 0.0
+    CONST_ONE,    // always 1.0
+
+    // -----------------------------------------------------------------------
+    // LEGACY WALL DISTANCE  (hyperbolic formula from pre-rework DETAILED_CLASSIC)
+    // Formula: 1.0 / (1.0 - dist / (fieldSize * sqrt(2))) - 1
+    // where dist is the 1-indexed coordinate distance toward that wall.
+    // Included so Demo mode can faithfully replay networks trained with the
+    // old formula without modifying the cardinal WALL_DIST_* features.
+    // -----------------------------------------------------------------------
+    LEGACY_WALL_DIST_N,
+    LEGACY_WALL_DIST_W,
+    LEGACY_WALL_DIST_E,
+    LEGACY_WALL_DIST_S,
 };
 
 // ===========================================================================
@@ -178,6 +198,13 @@ struct NetworkConfig {
     //   + 4 × food direction (one-hot, cardinal only)
     // Default hidden layers: 12-RELU
     static NetworkConfig makeTurnMode(int fieldSize = 20, int snakeCount = 21);
+
+    // 24 inputs replicating the pre-rework DETAILED_CLASSIC layout exactly.
+    // Uses CONST_ZERO for the 12 always-unused diagonal neurons and
+    // LEGACY_WALL_DIST_* for the original hyperbolic wall-distance formula.
+    // Topology: 24 → 25 → 18 → 4  (SUM/RELU throughout, SMAX output).
+    // Intended for loading and replaying networks trained before the rework.
+    static NetworkConfig makeDemo(int fieldSize = 20, int snakeCount = 21);
 };
 
 // ===========================================================================

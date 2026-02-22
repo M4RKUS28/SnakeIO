@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>docs/1200x600wa.png</file>
+        <file>Snakes/Release4_Medi-21-Score-147-zikzak-taktik_apple.seed</file>
+        <file>Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv</file>
     </qresource>
 </RCC>

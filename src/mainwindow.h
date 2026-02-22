@@ -72,6 +72,8 @@ private slots:
     void on_pushButton_export_clicked();
 
 private:
+    void setupDemoMode(const StartSettings& s);
+
     Ui::MainWindow *ui;
     QGraphicsScene * viewNetScene;
     ViewNet * viewNet;

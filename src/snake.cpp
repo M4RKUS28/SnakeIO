@@ -386,6 +386,38 @@ double Snake::evaluateFeature(const InputNeuronConfig& ncfg, const QPoint& foodP
     case InputFeature::LAST_OUTPUT_DOWN:  return lastOutput[1];
     case InputFeature::LAST_OUTPUT_RIGHT: return lastOutput[2];
     case InputFeature::LAST_OUTPUT_LEFT:  return lastOutput[3];
+
+    // -----------------------------------------------------------------------
+    // CONSTANTS
+    // -----------------------------------------------------------------------
+    case InputFeature::CONST_ZERO: return 0.0;
+    case InputFeature::CONST_ONE:  return 1.0;
+
+    // -----------------------------------------------------------------------
+    // LEGACY WALL DISTANCE  (pre-rework hyperbolic formula)
+    // Formula: 1.0 / (1.0 - dist / (fsize * sqrt(2))) - 1
+    // where dist is the 1-indexed coordinate distance toward the named wall.
+    // -----------------------------------------------------------------------
+    case InputFeature::LEGACY_WALL_DIST_N: {
+        double d = head.y();
+        double mx = fsize * M_SQRT2;
+        return 1.0 / (1.0 - d / mx) - 1.0;
+    }
+    case InputFeature::LEGACY_WALL_DIST_W: {
+        double d = head.x();
+        double mx = fsize * M_SQRT2;
+        return 1.0 / (1.0 - d / mx) - 1.0;
+    }
+    case InputFeature::LEGACY_WALL_DIST_E: {
+        double d = fsize - head.x() + 1;
+        double mx = fsize * M_SQRT2;
+        return 1.0 / (1.0 - d / mx) - 1.0;
+    }
+    case InputFeature::LEGACY_WALL_DIST_S: {
+        double d = fsize - head.y() + 1;
+        double mx = fsize * M_SQRT2;
+        return 1.0 / (1.0 - d / mx) - 1.0;
+    }
     }
 
     return 0.0;

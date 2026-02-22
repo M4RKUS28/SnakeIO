@@ -64,6 +64,14 @@ InputConfig::FeatureInfo InputConfig::getFeatureInfo(InputFeature feature, int /
     case InputFeature::LAST_OUTPUT_DOWN:  return { "Last Output — Down",            "Out↓-1",  false };
     case InputFeature::LAST_OUTPUT_RIGHT: return { "Last Output — Right",           "Out→-1",  false };
     case InputFeature::LAST_OUTPUT_LEFT:  return { "Last Output — Left",            "Out←-1",  false };
+    // --- Constants ---
+    case InputFeature::CONST_ZERO:         return { "Constant — always 0.0",        "□ 0",     false };
+    case InputFeature::CONST_ONE:          return { "Constant — always 1.0",        "■ 1",     false };
+    // --- Legacy wall distance (pre-rework hyperbolic formula) ---
+    case InputFeature::LEGACY_WALL_DIST_N: return { "Wall Dist N — Legacy ↑",       "Wleg↑",   false };
+    case InputFeature::LEGACY_WALL_DIST_W: return { "Wall Dist W — Legacy ←",       "Wleg←",   false };
+    case InputFeature::LEGACY_WALL_DIST_E: return { "Wall Dist E — Legacy →",       "Wleg→",   false };
+    case InputFeature::LEGACY_WALL_DIST_S: return { "Wall Dist S — Legacy ↓",       "Wleg↓",   false };
     }
     return { "Unknown", "?", false };
 }
@@ -102,6 +110,11 @@ QVector<InputFeature> InputConfig::allFeatures()
         // Feedback
         InputFeature::LAST_OUTPUT_UP,   InputFeature::LAST_OUTPUT_DOWN,
         InputFeature::LAST_OUTPUT_RIGHT, InputFeature::LAST_OUTPUT_LEFT,
+        // Constants
+        InputFeature::CONST_ZERO, InputFeature::CONST_ONE,
+        // Legacy wall distance
+        InputFeature::LEGACY_WALL_DIST_N, InputFeature::LEGACY_WALL_DIST_W,
+        InputFeature::LEGACY_WALL_DIST_E, InputFeature::LEGACY_WALL_DIST_S,
     };
 }
 
@@ -261,6 +274,60 @@ NetworkConfig NetworkConfig::makeTurnMode(int fieldSize, int snakeCount)
 }
 
 // ===========================================================================
+//  NetworkConfig::makeDemo()
+//  Replicates the pre-rework DETAILED_CLASSIC 24-input layout exactly.
+//  Positions that were always 0 in the old code use CONST_ZERO.
+//  Diagonal food-direction indices 0 and 2 are swapped (matching the original
+//  bug where NW/NE labels were accidentally transposed in the old code).
+//  Wall distances use LEGACY_WALL_DIST_* to match the original hyperbolic
+//  formula: 1/(1 - dist/(fieldSize*sqrt(2))) - 1.
+// ===========================================================================
+NetworkConfig NetworkConfig::makeDemo(int fieldSize, int snakeCount)
+{
+    NetworkConfig cfg;
+    cfg.fieldSize  = fieldSize;
+    cfg.snakeCount = snakeCount;
+
+    using F = InputFeature;
+    // --- Food direction [0..7] ---
+    // Note: indices 0 and 2 are intentionally swapped vs. the compass layout
+    // to reproduce the NW/NE transposition bug present in the trained model.
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_NE };   // [0] labelled NW in old code, actually NE
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_N  };   // [1] North
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_NW };   // [2] labelled NE in old code, actually NW
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_W  };   // [3] West
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_E  };   // [4] East
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_SW };   // [5] SW
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_S  };   // [6] South
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_SE };   // [7] SE
+
+    // --- Body proximity [8..15] --- (diagonals always 0 in old code)
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [8]  NW body (always 0)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_N  };  // [9]  North
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [10] NE body (always 0)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_W  };  // [11] West
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_E  };  // [12] East
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [13] SW body (always 0)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_S  };  // [14] South
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [15] SE body (always 0)
+
+    // --- Wall distance [16..23] --- (diagonals always 0 in old code)
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [16] NW wall (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_N };  // [17] North
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [18] NE wall (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_W };  // [19] West
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_E };  // [20] East
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [21] SW wall (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_S };  // [22] South
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [23] SE wall (always 0)
+
+    cfg.hiddenLayers << HiddenLayerConfig{ 25, "SUM", "RELU" };
+    cfg.hiddenLayers << HiddenLayerConfig{ 18, "SUM", "RELU" };
+
+    return cfg;
+}
+
+// ===========================================================================
 //  totalConnections()
 // ===========================================================================
 int InputConfig::totalConnections(const NetworkConfig& cfg)
@@ -273,4 +340,60 @@ int InputConfig::totalConnections(const NetworkConfig& cfg)
     }
     total += prev * 4;   // last hidden → output (always 4 neurons)
     return total;
+}
+
+// ===========================================================================
+//  NetworkConfig::makeDemo()
+//  Replicates the pre-rework DETAILED_CLASSIC 24-input layout exactly so
+//  networks trained before the architecture rework can be loaded and played.
+//
+//  Key quirks reproduced intentionally:
+//   - Diagonal body/wall neurons were always 0 → CONST_ZERO
+//   - NW/NE food-direction indices were transposed (bug in old code)
+//   - Wall distances use the old hyperbolic formula via LEGACY_WALL_DIST_*
+// ===========================================================================
+NetworkConfig NetworkConfig::makeDemo(int fieldSize, int snakeCount)
+{
+    NetworkConfig cfg;
+    cfg.fieldSize  = fieldSize;
+    cfg.snakeCount = snakeCount;
+
+    using F = InputFeature;
+
+    // --- Food direction [0..7] ---
+    // Indices 0 and 2 are swapped vs. compass order — matching the NW/NE
+    // transposition that existed in the old DETAILED_CLASSIC code.
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_NE };   // [0] old label "NW", actual NE
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_N  };   // [1] North
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_NW };   // [2] old label "NE", actual NW
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_W  };   // [3] West
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_E  };   // [4] East
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_SW };   // [5] SW
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_S  };   // [6] South
+    cfg.inputs << InputNeuronConfig{ F::FOOD_DIR_SE };   // [7] SE
+
+    // --- Body proximity [8..15] --- (diagonal slots always 0 in old code)
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO  };   // [8]  NW (always 0)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_N };   // [9]  North
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO  };   // [10] NE (always 0)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_W };   // [11] West
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_E };   // [12] East
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO  };   // [13] SW (always 0)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_S };   // [14] South
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO  };   // [15] SE (always 0)
+
+    // --- Wall distance [16..23] --- (diagonal slots always 0 in old code)
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO         };  // [16] NW (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_N };  // [17] North
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO         };  // [18] NE (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_W };  // [19] West
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_E };  // [20] East
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO         };  // [21] SW (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_S };  // [22] South
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO         };  // [23] SE (always 0)
+
+    cfg.hiddenLayers << HiddenLayerConfig{ 25, "SUM", "RELU" };
+    cfg.hiddenLayers << HiddenLayerConfig{ 18, "SUM", "RELU" };
+
+    return cfg;
 }

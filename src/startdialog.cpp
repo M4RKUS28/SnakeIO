@@ -31,6 +31,24 @@ StartDialog::StartDialog(QWidget *parent)
     QSettings settings("", "");
 
     setupTrainingPage();
+
+    // --- Add Demo button to the main menu page (page_7) ---
+    // Insert it between the AI Training button and the Exit button.
+    QWidget* menuPage = ui->stackedWidget->widget(0);
+    QVBoxLayout* menuLayout = qobject_cast<QVBoxLayout*>(menuPage->layout());
+    if (menuLayout) {
+        QPushButton* demoBtn = new QPushButton(" Demo Mode", menuPage);
+        QFont f = demoBtn->font();
+        f.setPointSize(11);
+        demoBtn->setFont(f);
+        demoBtn->setMaximumWidth(220);
+        QHBoxLayout* row = new QHBoxLayout;
+        row->addWidget(demoBtn);
+        // Insert before the last spacer (before the Exit row)
+        // The last real item is the Exit button row; insert one slot before it.
+        menuLayout->insertLayout(menuLayout->count() - 2, row);
+        connect(demoBtn, &QPushButton::clicked, this, &StartDialog::onDemoClicked);
+    }
 }
 
 StartDialog::~StartDialog()
@@ -90,8 +108,7 @@ void StartDialog::setupTrainingPage()
     preConfigCombo = new QComboBox(page);
     preConfigCombo->addItem("Classic  (24 inputs — ray cast)",       0);
     preConfigCombo->addItem("Full Field  (1 neuron per cell)",        1);
-    preConfigCombo->addItem("Turn Mode  (11 inputs — relative)",      2);
-    preConfigCombo->addItem("Custom  (edit manually)",                3);
+    preConfigCombo->addItem("Turn Mode  (11 inputs — relative)",      2);    preConfigCombo->addItem("Demo  (pre-rework classic, 24 inputs)",  4);    preConfigCombo->addItem("Custom  (edit manually)",                3);
     formLayout->addRow("Preset:", preConfigCombo);
 
     fieldSizeSpinBox = new QSpinBox(page);
@@ -229,8 +246,7 @@ void StartDialog::applyPreConfig(int index)
     switch (index) {
     case 0: cfg = NetworkConfig::makeClassic  (fieldSize, snakeCnt); break;
     case 1: cfg = NetworkConfig::makeFullField(fieldSize, snakeCnt); break;
-    case 2: cfg = NetworkConfig::makeTurnMode (fieldSize, snakeCnt); break;
-    default: return; // Custom — leave table as-is
+    case 2: cfg = NetworkConfig::makeTurnMode (fieldSize, snakeCnt); break;    case 4: cfg = NetworkConfig::makeDemo     (fieldSize, snakeCnt); break;    default: return; // Custom — leave table as-is
     }
 
     loadNetworkConfigToUI(cfg);
@@ -393,19 +409,20 @@ NetworkConfig StartDialog::readNetworkConfigFromUI() const
 // ===========================================================================
 //  Slots
 // ===========================================================================
-void StartDialog::onPreConfigChanged(int index)
+void StartDialog::onPreConfigChanged(int /*index*/)
 {
-    if (index != 3) // 3 = Custom → no auto-apply
-        applyPreConfig(index);
+    const int dataId = preConfigCombo ? preConfigCombo->currentData().toInt() : 0;
+    if (dataId != 3) // 3 = Custom → no auto-apply
+        applyPreConfig(dataId);
 }
 
 void StartDialog::onFieldSizeChanged(int /*value*/)
 {
     // Re-apply current preset so FULL_FIELD re-expands to the new cell count.
     // For Custom, just refresh the param spin box ranges.
-    const int presetIdx = preConfigCombo ? preConfigCombo->currentIndex() : 0;
-    if (presetIdx != 3) {
-        applyPreConfig(presetIdx);
+    const int dataId = preConfigCombo ? preConfigCombo->currentData().toInt() : 0;
+    if (dataId != 3) {
+        applyPreConfig(dataId);
     } else {
         // In custom mode: only update CELL_AT_INDEX param ranges + label previews
         const int fieldSize = fieldSizeSpinBox->value();
@@ -490,5 +507,13 @@ void StartDialog::on_pushButton_4_clicked()   // AI Training
 void StartDialog::on_pushButton_8_clicked()   // Exit
 {
     startSettings.appmode = StartSettings::APPMODE::EXIT;
+    this->accept();
+}
+
+void StartDialog::onDemoClicked()   // Demo Mode
+{
+    startSettings.appmode       = StartSettings::APPMODE::DEMO;
+    startSettings.networkConfig = NetworkConfig::makeDemo();
+    startSettings.ai_count      = startSettings.networkConfig.snakeCount;
     this->accept();
 }

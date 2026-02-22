@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "config/inputconfig.h"
+#include <QFile>
 
 MainWindow::MainWindow(StartSettings s, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -84,6 +85,74 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
       0, diaUber->styleHandler()->getCombobox());
 
   ui->pushButton->setDisabled(true);
+
+  if (s.appmode == StartSettings::DEMO)
+    setupDemoMode(s);
+}
+
+// ===========================================================================
+//  setupDemoMode()
+//  Called only when appmode == DEMO.
+//  Hides all training/settings controls, auto-imports the trained CSV, and
+//  sets a comfortable playback speed so the snake is easy to follow.
+// ===========================================================================
+void MainWindow::setupDemoMode(const StartSettings& s)
+{
+    // --- Hide the ViewNet visualisation panel ---
+    ui->widget_2->hide();
+
+    // --- Hide score/length/moves strip ---
+    ui->widget->hide();
+
+    // --- Hide everything in the right scroll panel except the 4 keep-items ---
+    // Keep: pushButtonStart, pushButton (stop), radioButtonShowGrid,
+    //       radioButtonrays, doubleSpinBox_speed  (+ label_8 "Speed").
+    const QList<QWidget*> toHide = {
+        ui->line,   ui->line_2, ui->line_4, ui->line_5,
+        ui->line_6, ui->line_7,
+        ui->label,  ui->label_2, ui->label_3, ui->label_4,
+        ui->label_5, ui->label_6, ui->label_7, ui->label_9,
+        ui->label_count, ui->label_10_gen, ui->label_ai_num,
+        ui->pushButton_2, ui->pushButton_3, ui->pushButton_4,
+        ui->pushButton_7, ui->pushButton_8,
+        ui->pushButton_export, ui->pushButton_import,
+        ui->pushButton_ueber, ui->pushButton_updateWeights,
+        ui->comboBoxMutAlgorithm,
+        ui->doubleSpinBox_learn_rate, ui->doubleSpinBoxMutRange,
+        ui->radioButtonreconnect, ui->radioBUpdateViewNet,
+        ui->checkBoxresetapples,
+        ui->highscore,
+    };
+    for (QWidget* w : toHide) w->hide();
+
+    // --- Set slow demo speed (≈ 8 steps/sec: 100/speed_game seconds per step) ---
+    ui->doubleSpinBox_speed->setValue(800.0);
+    for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
+        gameViewWithGame->game->snakes[i]->setSpeed(800.0);
+
+    // --- Auto-import the trained model ---
+    const QString prefix = QApplication::applicationDirPath()
+                           + "/../Snakes/Release4_Medi-21-Score-147-zikzak-taktik_";
+    QFile snakeFile(prefix + "snake.csv");
+    if (snakeFile.exists()) {
+        // Load apple seed so the food sequence matches the recorded run
+        QFile seedFile(prefix + "apple.seed");
+        if (seedFile.exists() && seedFile.open(QFile::ReadOnly))
+            gameViewWithGame->game->gamefield->setSeed(seedFile.readAll().toULongLong());
+
+        // Load weights into the best net slot and track it
+        const int best = gameViewWithGame->game->getBest();
+        if (gameViewWithGame->game->population->netAt(best)
+                ->loadFrom((prefix + "snake.csv").toStdString())) {
+            gameViewWithGame->connectToSnake(best);
+            ui->statusbar->showMessage("Demo model loaded — press Start to run.", 5000);
+        } else {
+            ui->statusbar->showMessage("Demo: model file found but failed to load.", 5000);
+        }
+    } else {
+        ui->statusbar->showMessage(
+            "Demo model not found: " + prefix + "snake.csv", 8000);
+    }
 }
 
 MainWindow::~MainWindow() {

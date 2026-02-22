@@ -22,6 +22,11 @@ int main(int argc, char *argv[])
             w.show();
             a.exec();
             break;
+        } case StartSettings::DEMO: {
+            MainWindow w(s.getStartSettings());
+            w.show();
+            a.exec();
+            break;
         } case StartSettings::SINGLE_PLAYER: {
             break;
         } case StartSettings::PLAYER_VS_AI: {
