@@ -1,66 +1,46 @@
 #include "game.h"
+#include "config/inputconfig.h"
 
-Game::Game(int fieldsize, int snakes_count, QObject *parent, double speed_game, QComboBox * mu_algo, bool pve)
-    : QThread(parent), toDO(NONE), doResetFieldAfterEvolution(false), snakes_count(snakes_count), best(0), mutation_rate(0.0025), mut_range(0.2), fokus(0), mu_algo(mu_algo), pve(pve)
+// ===========================================================================
+//  Constructor
+// ===========================================================================
+Game::Game(const NetworkConfig& cfg, QObject* parent, double speed_game,
+           QComboBox* mu_algo, bool pve)
+    : QThread(parent),
+      cfg(cfg),
+      toDO(NONE),
+      doResetFieldAfterEvolution(false),
+      snakes_count(cfg.snakeCount),
+      best(0),
+      mutation_rate(0.0025),
+      mut_range(0.2),
+      fokus(0),
+      mu_algo(mu_algo),
+      pve(pve)
 {
-    gamefield = new GameField(fieldsize);
+    gamefield = new GameField(cfg.fieldSize);
 
-#ifdef image_based
-    population = new Population("288_SUM_RELU,"
-                                "100_SUM_RELU,"
-                                "100_SUM_RELU,"
-                                "20_SUM_RELU,"
-                                "04_SUM_SMAX",
-                                snakes_count, 1.0, true);
+    // Build topology string from the NetworkConfig and construct the population
+    const std::string topology = InputConfig::buildTopologyString(cfg);
+    population = new Population(topology, snakes_count, 0.3, 1);
 
-#else
-    population = new Population("24_SUM_RELU,"
-                                "25_SUM_RELU,"
-                                "18_SUM_RELU,"
-                                "04_SUM_SMAX",
-                                snakes_count, 0.3, 1);
-
-
-    // population = new Population("24_SUM_RELU,"
-    //                             "40_SUM_RELU,"
-    //                             "4_SUM_IDENTITY",
-    //                             snakes_count, 0.3, 1);
-#endif
-
-
-
-//    population = new Population("2_SUM_RELU,"
-//                                "5_SUM_TANH,"
-//                                "5_SUM_RELU,"
-//                                "5_SUM_TANH,"
-//                                "2_SUM_SMAX",
-//                                2000,
-//                                1.0);
-
+    // Create one Snake per population member
     snakes = new Snake*[snakes_count];
-    for(int i = 0; i < snakes_count; i++) {
-        snakes[i] = new Snake(gamefield, population->netAt(i), this, i, speed_game,
-#ifdef image_based
-                              Snake::MODE::IMAGE_BASED
-#else
-                              Snake::MODE::DETAILED_CLASSIC
-#endif
-                              ,( i  < snakes_count / 2) );
+    for (int i = 0; i < snakes_count; ++i) {
+        snakes[i] = new Snake(gamefield, population->netAt(i), this, i,
+                               speed_game, this->cfg,
+                               /* startTop */ i < snakes_count / 2);
         connect(snakes[i], SIGNAL(died(int)), this, SLOT(snake_died(int)));
     }
 
-    //connect enemys
-    if(pve) {
-        for(int i = 0; i < snakes_count; i++) {
-            snakes[i]->setEnemy( snakes[ snakes_count - 1 - i  ]);
-            qDebug() << "i=" << i << "Snake: " << snakes[i]->getNum_id() << " has Enemy " << snakes_count - 1 - i << " =!= " << snakes[ i  ]->getEnemy()->getNum_id() << "<< snakes[ snakes_count - 1 - i ]->getNum_id()" << snakes[ snakes_count - 1 - i ]->getNum_id();
+    // Connect enemies for PvE mode
+    if (pve) {
+        for (int i = 0; i < snakes_count; ++i) {
+            snakes[i]->setEnemy(snakes[snakes_count - 1 - i]);
         }
     }
 
-    //connect for auto restart
-    // if(!pve)
-        connect(this, SIGNAL(finishedEvo()), this, SLOT(auto_restart_ais()));
-
+    connect(this, SIGNAL(finishedEvo()), this, SLOT(auto_restart_ais()));
 }
 
 Game::~Game()

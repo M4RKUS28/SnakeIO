@@ -1,20 +1,13 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "config/inputconfig.h"
 
 MainWindow::MainWindow(StartSettings s, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
   ui->setupUi(this);
 
-  int groese = 20;
-  int anzahl =
-#ifdef image_based
-      12;
-#else
-        /*39;//*/21;//12;//39;
-#endif
-
   gameViewWithGame =
-      new GraphicsView(s, this, this->ui->comboBoxMutAlgorithm, groese, anzahl,
+      new GraphicsView(s, this, this->ui->comboBoxMutAlgorithm,
                        ui->doubleSpinBox_speed->value());
   gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding,
                                   QSizePolicy::Policy::Expanding);
@@ -42,35 +35,39 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
 
   viewNetScene = new QGraphicsScene(this);
   ui->graphicsView_ViewNet->setScene(viewNetScene);
-  viewNet = new ViewNet(
-#ifdef image_based
-      nullptr
-#else
-      gameViewWithGame->game->population->netAt(0)
-#endif
-      ,
-      QRect(0, 0, 670, 800), 20, false);
-  viewNetScene->addItem(viewNet);
 
-  QStringList labels;
-  labels << "↖ 🍎 " << "🡑 🍎 " << "↗ 🍎 "
-         << "🡐 🍎 " << "🡒 🍎 "
-         << "↙ 🍎 " << "🡓 🍎 " << "↘ 🍎 "
+  const int connCount = InputConfig::totalConnections(s.networkConfig);
+  if (connCount <= 2000) {
+    viewNet = new ViewNet(
+        gameViewWithGame->game->population->netAt(0),
+        QRect(0, 0, 670, 800), 20, false);
+    viewNetScene->addItem(viewNet);
 
-         << "" << "🡑 🐍 " << ""
-         << "🡐 🐍 " << "🡒 🐍 "
-         << "" << "🡓 🐍 " << ""
+    // Input labels are derived from the NetworkConfig so they always match
+    // the actual neuron layout regardless of preset or custom configuration.
+    QStringList labels = InputConfig::generateInputLabels(s.networkConfig);
+    viewNet->setInputPrefix(labels);
+    viewNet->updateInputLabels(true, 30);
 
-         << "" << "🡑 🚧 " << ""
-         << "🡐 🚧 " << "🡒 🚧 "
-         << "" << "🡓 🚧 " << "";
-  viewNet->setInputPrefix(labels);
-  viewNet->updateInputLabels(true, 30);
-
-  labels.clear();
-  labels << " 🡑 Up" << " 🡓 Down" << " 🡒 Right" << " 🡐 Left";
-  viewNet->setOutputSuffix(labels);
-  viewNet->updateOutputLabels(true, true, 30);
+    labels.clear();
+    labels << " 🡑 Up" << " 🡓 Down" << " 🡒 Right" << " 🡐 Left";
+    viewNet->setOutputSuffix(labels);
+    viewNet->updateOutputLabels(true, true, 30);
+  } else {
+    viewNet = nullptr;
+    QGraphicsTextItem* msg = viewNetScene->addText(
+        QString("Network visualization is disabled.\n\n"
+                "The current architecture has %1 connections,\n"
+                "which exceeds the limit of 2\u202F000.\n\n"
+                "Reduce the number of input neurons or\n"
+                "hidden layer sizes to enable visualization.")
+            .arg(connCount));
+    QFont f = msg->font();
+    f.setPointSize(10);
+    msg->setFont(f);
+    msg->setDefaultTextColor(Qt::gray);
+    msg->setPos(20, 40);
+  }
 
   timer = this->startTimer(1);
 
@@ -130,7 +127,7 @@ void MainWindow::bestSnakeChanged(int id, int val, int leng) {
   textUpdate();
 
   // wait for mutation-> free time -> redraw weights!
-  if (ui->radioBUpdateViewNet->isChecked()) {
+  if (viewNet && ui->radioBUpdateViewNet->isChecked()) {
     viewNet->updateInputLabels(true, 30);
     viewNet->updateOutputLabels(true, true, 30);
     // Redraw and update weights
@@ -160,8 +157,9 @@ void MainWindow::evolved() {
   ui->label_count->setText(QString::number(gameViewWithGame->getAi_count()));
   ui->label_10_gen->setText(
       QString::number(gameViewWithGame->game->population->getEvolutionCount()));
-  viewNet->changeNet(gameViewWithGame->game->population->netAt(
-      gameViewWithGame->game->getBest()));
+  if (viewNet)
+    viewNet->changeNet(gameViewWithGame->game->population->netAt(
+        gameViewWithGame->game->getBest()));
 }
 
 void MainWindow::snakeCountChanged(int ic) {
@@ -185,7 +183,7 @@ void MainWindow::textUpdate() {
       ui->label_max_moves->setText(
           QString::number(gameViewWithGame->currentSnake()->getMaxMoves()));
 
-  if (ui->doubleSpinBox_speed->value() < 10001.0) {
+  if (viewNet && ui->doubleSpinBox_speed->value() < 10001.0) {
     if (ui->radioBUpdateViewNet->isChecked()) {
       viewNet->updateInputLabels(true, 30);
       viewNet->updateOutputLabels(true, true, 30);
@@ -194,11 +192,11 @@ void MainWindow::textUpdate() {
 }
 
 void MainWindow::on_pushButton_updateWeights_clicked() {
-  viewNet->updateWeightsLabels();
+  if (viewNet) viewNet->updateWeightsLabels();
 }
 
 void MainWindow::newFokus(unsigned int id) {
-  viewNet->changeNet(gameViewWithGame->game->population->netAt(id));
+  if (viewNet) viewNet->changeNet(gameViewWithGame->game->population->netAt(id));
   ui->statusbar->showMessage("Du verfolgst nun AI-Snake " + QString::number(id),
                              1000);
   ui->label_ai_num->setText(QString::number(id));

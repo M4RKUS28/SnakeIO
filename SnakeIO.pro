@@ -12,6 +12,7 @@ CONFIG += c++17
 
 
 SOURCES += \
+    src/config/inputconfig.cpp \
     src/game.cpp \
     src/pvemainwindow.cpp \
     src/gamefield.cpp \
@@ -22,6 +23,7 @@ SOURCES += \
     src/startdialog.cpp
 
 HEADERS += \
+    src/config/inputconfig.h \
     src/game.h \
     src/pvemainwindow.h \
     src/gamefield.h \

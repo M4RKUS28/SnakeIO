@@ -3,41 +3,38 @@
 #include <QBrush>
 #include <QKeyEvent>
 
-GraphicsView::GraphicsView(StartSettings s, QWidget *parent, QComboBox * mutAlgo, int groese, int anzahl, double speed_game, bool isPvE)
+GraphicsView::GraphicsView(StartSettings s, QWidget* parent, QComboBox* mutAlgo,
+                           double speed_game, bool isPvE)
     : QGraphicsView(parent), showRays(false), rreconnect(true), connected_to(0), isPvE(isPvE)
 {
     scene = new QGraphicsScene(this);
     this->setScene(scene);
 
-    ai_count = s.ai_count;
+    const int groese  = 20;                            // pixel size per cell
+    const int anzahl  = s.networkConfig.fieldSize;     // field side-length (cells)
+    ai_count          = s.networkConfig.snakeCount;
 
-    int abstand = 20;
-    int pixel_count = groese * anzahl + abstand * 2;
+    const int abstand     = 20;
+    const int pixel_count = groese * anzahl + abstand * 2;
 
-#ifdef image_based
-    ai_count =    500;
-#endif
+    std::cout << "Field: " << anzahl << "  AIs: " << ai_count << std::endl;
 
-    std::cout << "AIS: " << ai_count << std::endl;
-
-    // this->setFixedSize(pixel_count,  pixel_count);
     scene->setSceneRect(0, 0, pixel_count, pixel_count);
     border = scene->addRect(QRect(abstand, abstand, groese * anzahl, groese * anzahl));
 
-    // Karo Muster...
+    // Grid lines
     grid = new QGraphicsItemGroup();
-    for(int x = abstand; x <= groese * anzahl + abstand; x += groese) {
-        QGraphicsLineItem * a;
-        grid->addToGroup( ( a = new QGraphicsLineItem(QLine(x, abstand, x, groese * anzahl + abstand))));
+    for (int x = abstand; x <= groese * anzahl + abstand; x += groese) {
+        QGraphicsLineItem* a;
+        grid->addToGroup((a = new QGraphicsLineItem(QLine(x, abstand, x, groese * anzahl + abstand))));
         a->setPen(QPen(QBrush(QColor::fromRgb(160, 160, 160)), 1));
-        grid->addToGroup( ( a = new QGraphicsLineItem(QLine(abstand, x, groese * anzahl + abstand, x))));
+        grid->addToGroup((a = new QGraphicsLineItem(QLine(abstand, x, groese * anzahl + abstand, x))));
         a->setPen(QPen(QBrush(QColor::fromRgb(160, 160, 160)), 1));
     }
     scene->addItem(grid);
 
-
-    //Game...
-    game = new Game(anzahl, ai_count, this, speed_game, mutAlgo, isPvE);
+    // Create the Game with the full NetworkConfig
+    game = new Game(s.networkConfig, this, speed_game, mutAlgo, isPvE);
     connect(game, SIGNAL(bestSnakeChanged(int,int,int)), this, SLOT(setNewFokusToBest(int,int,int)));
 
     game->snakes[connected_to]->setFokus(true);

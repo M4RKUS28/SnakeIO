@@ -17,7 +17,8 @@ class GraphicsView : public QGraphicsView
 {
     Q_OBJECT
 public:
-    GraphicsView(StartSettings s, QWidget * parent, QComboBox *mutAlgo, int groese, int anzahl, double speed_game, bool isPvE = false);
+    GraphicsView(StartSettings s, QWidget* parent, QComboBox* mutAlgo,
+                 double speed_game, bool isPvE = false);
     ~GraphicsView();
 
     Game * game;

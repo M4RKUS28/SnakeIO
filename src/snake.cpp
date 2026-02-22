@@ -2,661 +2,432 @@
 #include "qdebug.h"
 
 #include <QPainterPath>
+#include <cmath>
+#include <algorithm>
+#include <vector>
 
-Snake::Snake(GameField *field, Net *net, QObject *parent, int num_id, double speed_game, MODE input_mode, bool startTop)
-    : QThread(parent), input_mode(input_mode), enemy(nullptr), field(field), net(net), num_id(num_id), startTop(startTop)
+// ===========================================================================
+//  Constructor / Destructor
+// ===========================================================================
+Snake::Snake(GameField* field, Net* net, QObject* parent, int num_id,
+             double speed_game, const NetworkConfig& cfg, bool startTop)
+    : QThread(parent),
+      cfg(cfg),
+      lebt_noch(false),
+      fokus(false),
+      speed_game(speed_game),
+      enemy(nullptr),
+      field(field),
+      net(net),
+      isAI(false),
+      foodNum(0),
+      survive_time(0),
+      num_id(num_id),
+      moves(0),
+      startTop(startTop)
 {
-    // agent = new Agent(net, 0.9, 0.0, 100);
-
-    if(!net) {
-        std::cout << "Netless snake!" << std::endl;
-        exit(123);
+    if (!net) {
+        std::cerr << "Snake created without a network!" << std::endl;
+        std::exit(123);
     }
-
-    isAI = false;
-    fokus = false;
     reset();
     this->speed_game = speed_game;
 }
 
-Snake::~Snake()
-{
+Snake::~Snake() {}
 
-}
-
-
+// ===========================================================================
+//  reset()
+// ===========================================================================
 void Snake::reset()
 {
     isAI = false;
     richtung = QPoint(1, 0);
     pos.clear();
-    for(int i = 0; i < snake_init_length; i++) {
-        //pos.append(QPoint(field->getSize() / 2, field->getSize() / 2));
-        if(startTop) {
+    for (int i = 0; i < snake_init_length; ++i) {
+        if (startTop)
             pos.append(QPoint(1, 1));
-        } else {
-            pos.append(QPoint(1, field->getSize() ));
-        }
-
+        else
+            pos.append(QPoint(1, field->getSize()));
     }
-
-    moves = snake_init_moves;
-    foodNum = 0;
-    lebt_noch = true;
+    moves        = snake_init_moves;
+    foodNum      = 0;
+    lebt_noch    = true;
     survive_time = 0;
+
+    lastOutput[0] = lastOutput[1] = lastOutput[2] = lastOutput[3] = 0.0;
 }
 
-void Snake::startAI(Net * net)
-{
-    if(this->isRunning()) {
-        perror("already running");
-        return;
-    }
 
+// ===========================================================================
+//  startAI / startPlayer
+// ===========================================================================
+void Snake::startAI(Net* net)
+{
+    if (this->isRunning()) { perror("already running"); return; }
     reset();
     this->isAI = true;
-    this->net = net;
+    this->net  = net;
     this->QThread::start();
 }
 
-void Snake::startPlayer(Net *netinfo)
+void Snake::startPlayer(Net* netinfo)
 {
-    if(this->isRunning()) {
-        perror("already running");
-        return;
-    }
+    if (this->isRunning()) { perror("already running"); return; }
     reset();
     this->setFokus(true);
     this->net = netinfo;
     this->QThread::start();
 }
 
-
-// int argmax2(/*const Action& vec*/) {
-//     if (vec.empty()) {
-//         // Handle the case where the vector is empty
-//         return -1; // or any other appropriate value
-//     }
-
-//     // Use std::max_element to find the iterator pointing to the maximum element
-//     auto maxElementIterator = std::max_element(vec.begin(), vec.end());
-
-//     // Check if maxElementIterator is valid before getting the index
-//     if (maxElementIterator != vec.end()) {
-//         // Calculate the index by subtracting the beginning iterator
-//         int index = std::distance(vec.begin(), maxElementIterator);
-//         return index;
-//     } else {
-//         // Handle the case where the vector is empty or other specific conditions
-//         return -1; // or any other appropriate value
-//     }
-// }
-
-
+// ===========================================================================
+//  run()  —  main game loop
+// ===========================================================================
 void Snake::run()
 {
     foodNum = 0;
+    if (fokus) emit foodPosChanged(getCurrentFood(), num_id);
 
-    if(fokus)
-        emit foodPosChanged(getCurrentFood(), num_id);
-
-    int buf_size = 1;
-    switch (input_mode) {
-    case Snake::CLASSIC:
-        buf_size = 24;
-        break;
-    case Snake::DETAILED_CLASSIC:
-        buf_size = 24;
-        break;
-    case Snake::IMAGE_BASED:
-        buf_size = (field->getSize() * field->getSize() * 2);
-        break;
-    case Snake::TURN_MODE:
-        buf_size = 11;
-        break;
-    }
-
-    double buffer[buf_size];
-    // State state, stateAfter;
-    // Action action = {0, 0, 0, 0};
-    // double reward = 1.0;
-    // bool isOver = false;
+    const int buf_size = cfg.inputCount();
+    std::vector<double> buffer(buf_size, 0.0);
 
     while (!isInterruptionRequested()) {
 
-        if(net) {
+        if (net) {
+            lookThingsUp(buffer.data(), getCurrentFood());
 
-            lookThingsUp(buffer, getCurrentFood());
+            if (isInterruptionRequested()) break;
+            net->feedForward(buffer.data());
+            if (isInterruptionRequested()) break;
+            net->getResults(buffer.data());
+            if (isInterruptionRequested()) break;
 
+            // Cache outputs for LAST_OUTPUT_* features on next tick
+            lastOutput[0] = buffer[0];  // Up
+            lastOutput[1] = buffer[1];  // Down
+            lastOutput[2] = buffer[2];  // Right
+            lastOutput[3] = buffer[3];  // Left
 
-            // for(int i = 0; i < buf_size; i++)
-            //     state.push_back(buffer[i]);
-
-            if(isInterruptionRequested())
-                break;
-            net->feedForward(buffer);
-            if(isInterruptionRequested())
-                break;
-            net->getResults(buffer);
-            if(isInterruptionRequested())
-                break;
-
-            if(isAI) {
-
-                if(false /*&& input_mode == Snake::TURN_MODE*/) {
-
-                } else {
-                    int maxIndex = 0;
-                    double maxProbability = buffer[0];
-
-                    for (int i = 1; i < 4; ++i) {
-                        if (buffer[i] > maxProbability) {
-                            maxProbability = buffer[i];
-                            maxIndex = i;
-                        }
-                    }
-
-                    switch (maxIndex /*argmax2(agent->getAction(state))*/ ) {
-                    case 0:
-                        richtungAendern(QPoint(0, -1));
-                        break;
-                    case 1:
-                        richtungAendern(QPoint(0, 1));
-                        break;
-                    case 2:
-                        richtungAendern(QPoint(1, 0));
-                        break;
-                    case 3:
-                        richtungAendern(QPoint(-1, 0));
-                        break;
-                    }
-
-                    // action.at(maxIndex) = 1;
+            if (isAI) {
+                // Argmax over 4 output neurons → pick direction
+                int maxIndex = 0;
+                double maxVal = buffer[0];
+                for (int i = 1; i < 4; ++i) {
+                    if (buffer[i] > maxVal) { maxVal = buffer[i]; maxIndex = i; }
+                }
+                switch (maxIndex) {
+                case 0: richtungAendern(QPoint( 0, -1)); break;  // Up
+                case 1: richtungAendern(QPoint( 0,  1)); break;  // Down
+                case 2: richtungAendern(QPoint( 1,  0)); break;  // Right
+                case 3: richtungAendern(QPoint(-1,  0)); break;  // Left
                 }
             }
         }
 
-        if(fokus)
-            emit posChanged(pos, num_id);
-        if(isInterruptionRequested())
-            break;
-        usleep(1000000 * (100.0 / speed_game));
-        if(isInterruptionRequested())
-            break;
+        if (fokus) emit posChanged(pos, num_id);
+        if (isInterruptionRequested()) break;
+        usleep(static_cast<useconds_t>(1000000.0 * (100.0 / speed_game)));
+        if (isInterruptionRequested()) break;
 
-        //check outstanding moves
+        // --- Validate next move ---
         bool move_is_ok = true;
         QPoint newPos = pos.front() + richtung;
-        //check if run into snake itself
+
         auto tmp = getPos();
-        for(const auto & e : tmp)
-            if(e == newPos)
-                move_is_ok = false;
+        for (const auto& e : tmp)
+            if (e == newPos) { move_is_ok = false; break; }
 
-        //check if run into enemy
-
-        if(enemy) {
+        if (enemy) {
             auto enmpos = getEnemyPolygon();
-
-            for(const auto & e : enmpos)
-                if(e == newPos) {
-                    move_is_ok = false;
-                    // qDebug() << "run into enemy!";
-                }
-
+            for (const auto& e : enmpos)
+                if (e == newPos) { move_is_ok = false; break; }
         }
 
-
-        // Wenn keine weiteren moves übrig sind oder check run out of map
-        if(moves <= 0 || newPos.x() <= 0 || newPos.x() > field->getSize()  || newPos.y() <= 0 || newPos.y() > field->getSize())
+        if (moves <= 0
+            || newPos.x() <= 0 || newPos.x() > field->getSize()
+            || newPos.y() <= 0 || newPos.y() > field->getSize())
             move_is_ok = false;
-        //die if not ok
-        if(!move_is_ok){
-            fokus = false;
+
+        if (!move_is_ok) {
+            fokus     = false;
             lebt_noch = false;
-
             emit died(num_id);
-
-
-            // lookThingsUp(buffer, currentFood);
-            // for(int i = 0; i < buf_size; i++)
-            //     stateAfter.push_back(buffer[i]);
-            // agent->addStep(state, stateAfter, action, -10, true);
-
             return;
         }
 
-        if(isInterruptionRequested())
-            break;
+        if (isInterruptionRequested()) break;
 
-        //Move
+        // --- Move ---
         pos.prepend(newPos);
         pos.removeLast();
         moves--;
 
-        //Try eat
-        if(pos.first() == getCurrentFood()) {
-
-            foodNum++;
-            if(fokus)
-                emit foodPosChanged(getCurrentFood(), num_id);
+        // --- Eat apple ---
+        if (pos.first() == getCurrentFood()) {
+            ++foodNum;
+            if (fokus) emit foodPosChanged(getCurrentFood(), num_id);
             moves += snake_add_moves_per_apple;
-            if((ssize_t)moves > getMaxMoves() )
+            if (static_cast<ssize_t>(moves) > getMaxMoves())
                 moves = getMaxMoves();
-
-            //Wachse!!
-            pos.append(pos.last());
-
-            // reward = 10;
+            pos.append(pos.last());  // grow
         }
-        survive_time++;
-
-
-        // lookThingsUp(buffer, currentFood);
-        // for(int i = 0; i < buf_size; i++)
-        //     stateAfter.push_back(buffer[i]);
-        // agent->addStep(state, stateAfter, action, reward, false);
+        ++survive_time;
     }
 
     lebt_noch = false;
     emit died(num_id);
 }
 
-QPolygon Snake::getPos() const
+// ===========================================================================
+//  lookThingsUp()
+//  Fills one buffer slot per cfg.inputs entry by delegating to evaluateFeature.
+// ===========================================================================
+void Snake::lookThingsUp(double* buffer, const QPoint& foodPos)
 {
-    return pos;
+    const int n = cfg.inputCount();
+    for (int i = 0; i < n; ++i)
+        buffer[i] = evaluateFeature(cfg.inputs[i], foodPos);
 }
 
-int Snake::getFoodNum() const
+// ===========================================================================
+//  evaluateFeature()
+//
+//  Single source of truth for all input values.
+//  To add a new input type: add a case here + an entry in inputconfig.cpp.
+// ===========================================================================
+double Snake::evaluateFeature(const InputNeuronConfig& ncfg, const QPoint& foodPos) const
 {
-    return foodNum;
+    const QPoint& head = pos.front();
+    const int  fsize   = field->getSize();   // field is 1-indexed [1..fsize]
+
+    // --- Helper: is a cell a wall or own body segment? ---
+    auto isDangerous = [&](QPoint p) -> bool {
+        if (p.x() < 1 || p.x() > fsize || p.y() < 1 || p.y() > fsize) return true;
+        auto tmp = getPos();
+        for (const auto& e : tmp) if (e == p) return true;
+        return false;
+    };
+
+    // --- Helper: inverse distance to nearest own body along a ray ---
+    auto bodyProxOnRay = [&](int dx, int dy) -> double {
+        auto tmp = getPos();
+        for (int step = 1; step <= fsize * 2; ++step) {
+            QPoint p(head.x() + dx * step, head.y() + dy * step);
+            if (p.x() < 1 || p.x() > fsize || p.y() < 1 || p.y() > fsize) break;
+            for (const auto& e : tmp)
+                if (e == p) return 1.0 / step;
+        }
+        return 0.0;
+    };
+
+    // --- Helper: inverse distance to nearest enemy segment along a ray ---
+    auto enemyProxOnRay = [&](int dx, int dy) -> double {
+        if (!enemy) return 0.0;
+        auto enmpos = enemy->getPos();
+        for (int step = 1; step <= fsize * 2; ++step) {
+            QPoint p(head.x() + dx * step, head.y() + dy * step);
+            if (p.x() < 1 || p.x() > fsize || p.y() < 1 || p.y() > fsize) break;
+            for (const auto& e : enmpos)
+                if (e == p) return 1.0 / step;
+        }
+        return 0.0;
+    };
+
+    // --- Helper: normalised wall distance along a cardinal direction [0=at wall, 1=far] ---
+    auto wallDistCardinal = [&](int dx, int dy) -> double {
+        double dist;
+        if      (dx == -1) dist = head.x() - 1;
+        else if (dx ==  1) dist = fsize - head.x();
+        else if (dy == -1) dist = head.y() - 1;
+        else               dist = fsize - head.y();
+        return fsize > 1 ? dist / static_cast<double>(fsize - 1) : 0.0;
+    };
+
+    // --- Helper: normalised wall distance along a diagonal direction ---
+    auto wallDistDiag = [&](int dx, int dy) -> double {
+        for (int step = 1; step < fsize; ++step) {
+            if (head.x() + dx * step < 1 || head.x() + dx * step > fsize ||
+                head.y() + dy * step < 1 || head.y() + dy * step > fsize)
+                return (step - 1) / static_cast<double>(fsize - 1);
+        }
+        return 1.0;
+    };
+
+    // --- Helper: 1.0 if food lies exactly on the given compass ray ---
+    auto foodOnRay = [&](int dx, int dy) -> double {
+        float ddx = static_cast<float>(foodPos.x() - head.x());
+        float ddy = static_cast<float>(foodPos.y() - head.y());
+        if (ddx == 0.0f && ddy == 0.0f) return 0.0;   // food at head (shouldn't happen)
+        if (dy == 0) {  // cardinal E/W
+            if (ddy != 0.0f) return 0.0;
+            return ((dx < 0) == (ddx < 0)) ? 1.0 : 0.0;
+        }
+        if (dx == 0) {  // cardinal N/S
+            if (ddx != 0.0f) return 0.0;
+            return ((dy < 0) == (ddy < 0)) ? 1.0 : 0.0;
+        }
+        // Diagonal: food must be on the exact diagonal (|ddx| == |ddy|) and same quadrant
+        if (std::abs(ddx) != std::abs(ddy)) return 0.0;
+        return ((dx < 0) == (ddx < 0)) && ((dy < 0) == (ddy < 0)) ? 1.0 : 0.0;
+    };
+
+    const QPoint& r = richtung;  // current heading
+
+    switch (ncfg.feature) {
+
+    // -----------------------------------------------------------------------
+    // FOOD DIRECTION — one-hot (1.0 if food is on that exact compass ray)
+    // -----------------------------------------------------------------------
+    case InputFeature::FOOD_DIR_NW: return foodOnRay(-1, -1);
+    case InputFeature::FOOD_DIR_N:  return foodOnRay( 0, -1);
+    case InputFeature::FOOD_DIR_NE: return foodOnRay( 1, -1);
+    case InputFeature::FOOD_DIR_W:  return foodOnRay(-1,  0);
+    case InputFeature::FOOD_DIR_E:  return foodOnRay( 1,  0);
+    case InputFeature::FOOD_DIR_SW: return foodOnRay(-1,  1);
+    case InputFeature::FOOD_DIR_S:  return foodOnRay( 0,  1);
+    case InputFeature::FOOD_DIR_SE: return foodOnRay( 1,  1);
+
+    // -----------------------------------------------------------------------
+    // BODY PROXIMITY — 1/distance to nearest body segment on that ray
+    // -----------------------------------------------------------------------
+    case InputFeature::BODY_PROX_NW: return bodyProxOnRay(-1, -1);
+    case InputFeature::BODY_PROX_N:  return bodyProxOnRay( 0, -1);
+    case InputFeature::BODY_PROX_NE: return bodyProxOnRay( 1, -1);
+    case InputFeature::BODY_PROX_W:  return bodyProxOnRay(-1,  0);
+    case InputFeature::BODY_PROX_E:  return bodyProxOnRay( 1,  0);
+    case InputFeature::BODY_PROX_SW: return bodyProxOnRay(-1,  1);
+    case InputFeature::BODY_PROX_S:  return bodyProxOnRay( 0,  1);
+    case InputFeature::BODY_PROX_SE: return bodyProxOnRay( 1,  1);
+
+    // -----------------------------------------------------------------------
+    // WALL DISTANCE — normalised [0=at wall, 1=farthest from that wall]
+    // -----------------------------------------------------------------------
+    case InputFeature::WALL_DIST_NW: return wallDistDiag  (-1, -1);
+    case InputFeature::WALL_DIST_N:  return wallDistCardinal( 0, -1);
+    case InputFeature::WALL_DIST_NE: return wallDistDiag  ( 1, -1);
+    case InputFeature::WALL_DIST_W:  return wallDistCardinal(-1,  0);
+    case InputFeature::WALL_DIST_E:  return wallDistCardinal( 1,  0);
+    case InputFeature::WALL_DIST_SW: return wallDistDiag  (-1,  1);
+    case InputFeature::WALL_DIST_S:  return wallDistCardinal( 0,  1);
+    case InputFeature::WALL_DIST_SE: return wallDistDiag  ( 1,  1);
+
+    // -----------------------------------------------------------------------
+    // CELL VALUE — -1 = own body,  0 = empty,  +1 = food
+    // param = flat cell index (col + row * fieldSize, 0-based)
+    // -----------------------------------------------------------------------
+    case InputFeature::CELL_AT_INDEX: {
+        const int col  = ncfg.param % fsize;   // 0-based
+        const int row  = ncfg.param / fsize;
+        QPoint cell(col + 1, row + 1);          // convert to 1-based field coords
+        if (cell == foodPos) return 1.0;
+        auto tmp = getPos();
+        for (const auto& e : tmp)
+            if (e == cell) return -1.0;
+        return 0.0;
+    }
+
+    // -----------------------------------------------------------------------
+    // FOOD METRICS
+    // -----------------------------------------------------------------------
+    case InputFeature::FOOD_DISTANCE: {
+        double dx = foodPos.x() - head.x();
+        double dy = foodPos.y() - head.y();
+        return std::sqrt(dx*dx + dy*dy) / (fsize * std::sqrt(2.0));
+    }
+    case InputFeature::FOOD_ANGLE: {
+        double dx = foodPos.x() - head.x();
+        double dy = foodPos.y() - head.y();
+        // Map atan2 from [-pi, pi] to [0, 1]
+        return (std::atan2(dy, dx) + M_PI) / (2.0 * M_PI);
+    }
+
+    // -----------------------------------------------------------------------
+    // SNAKE STATE
+    // -----------------------------------------------------------------------
+    case InputFeature::MOVES_LEFT: {
+        int maxM = getMaxMoves();
+        return maxM > 0 ? std::min(1.0, static_cast<double>(moves) / maxM) : 0.0;
+    }
+    case InputFeature::SNAKE_LENGTH:
+        return std::min(1.0, static_cast<double>(pos.size()) / (fsize * fsize));
+
+    // -----------------------------------------------------------------------
+    // DANGER (relative to current heading)
+    //   turn-right from (dx,dy) = (-dy, dx)
+    //   turn-left  from (dx,dy) = ( dy,-dx)
+    // -----------------------------------------------------------------------
+    case InputFeature::DANGER_STRAIGHT:
+        return isDangerous(head + r) ? 1.0 : 0.0;
+    case InputFeature::DANGER_RIGHT:
+        return isDangerous(head + QPoint(-r.y(),  r.x())) ? 1.0 : 0.0;
+    case InputFeature::DANGER_LEFT:
+        return isDangerous(head + QPoint( r.y(), -r.x())) ? 1.0 : 0.0;
+
+    // -----------------------------------------------------------------------
+    // CURRENT DIRECTION (one-hot, absolute)
+    // -----------------------------------------------------------------------
+    case InputFeature::DIR_N: return (r == QPoint( 0, -1)) ? 1.0 : 0.0;
+    case InputFeature::DIR_W: return (r == QPoint(-1,  0)) ? 1.0 : 0.0;
+    case InputFeature::DIR_E: return (r == QPoint( 1,  0)) ? 1.0 : 0.0;
+    case InputFeature::DIR_S: return (r == QPoint( 0,  1)) ? 1.0 : 0.0;
+
+    // -----------------------------------------------------------------------
+    // ENEMY PROXIMITY (PvE — inverse distance to nearest enemy on ray)
+    // -----------------------------------------------------------------------
+    case InputFeature::ENEMY_PROX_N: return enemyProxOnRay( 0, -1);
+    case InputFeature::ENEMY_PROX_W: return enemyProxOnRay(-1,  0);
+    case InputFeature::ENEMY_PROX_E: return enemyProxOnRay( 1,  0);
+    case InputFeature::ENEMY_PROX_S: return enemyProxOnRay( 0,  1);
+
+    // -----------------------------------------------------------------------
+    // FEEDBACK (last output neuron values from previous tick — default 0.0)
+    // -----------------------------------------------------------------------
+    case InputFeature::LAST_OUTPUT_UP:    return lastOutput[0];
+    case InputFeature::LAST_OUTPUT_DOWN:  return lastOutput[1];
+    case InputFeature::LAST_OUTPUT_RIGHT: return lastOutput[2];
+    case InputFeature::LAST_OUTPUT_LEFT:  return lastOutput[3];
+    }
+
+    return 0.0;
 }
 
-Snake *Snake::getEnemy() const
+// ===========================================================================
+//  Accessors
+// ===========================================================================
+QPolygon Snake::getPos()         const { return pos; }
+int      Snake::getFoodNum()     const { return foodNum; }
+Snake*   Snake::getEnemy()       const { return enemy; }
+int      Snake::getNum_id()      const { return num_id; }
+bool     Snake::getLebt_noch()   const { return lebt_noch; }
+bool     Snake::getFokus()       const { return fokus; }
+size_t   Snake::getLeftMoves()   const { return moves; }
+size_t   Snake::getScore()       const { return foodNum * 300 + survive_time; }
+
+int Snake::getLegth()     const { return pos.length(); }
+int Snake::getMaxMoves() const { return field->getSize() * 10 + 2 * getLegth(); }
+
+void Snake::setFokus(bool v)      { fokus = v; }
+void Snake::setSpeed(double s)    { speed_game = s; }
+void Snake::setEnemy(Snake* e)    { enemy = e; }
+
+void Snake::richtungAendern(QPoint r)
 {
-    return enemy;
-}
-
-int Snake::getNum_id() const
-{
-    return num_id;
-}
-
-int Snake::getMaxMoves()
-{
-    return field->getSize() * 10+ 2* getLegth();
-}
-
-
-bool Snake::getFokus() const
-{
-    return fokus;
-}
-
-void Snake::setFokus(bool newFokus)
-{
-    fokus = newFokus;
-}
-
-void Snake::setSpeed(double speed_game)
-{
-    this->speed_game = speed_game;
-}
-
-
-
-bool Snake::getLebt_noch() const
-{
-    return lebt_noch;
+    QMutexLocker m(&mutex_richtung_aendern);
+    richtung = r;
 }
 
 QPoint Snake::getCurrentFood()
 {
-    if(enemy && foodNum != enemy->getFoodNum()) {
+    if (enemy && foodNum != enemy->getFoodNum()) {
         foodNum = std::max(foodNum, enemy->getFoodNum());
         emit foodPosChanged(field->getApplePos(foodNum), num_id);
     }
     return field->getApplePos(foodNum);
 }
 
-size_t Snake::getLeftMoves() const
-{
-    return moves;
-}
-
-size_t Snake::getScore() const
-{
-    return foodNum * 300 + survive_time;
-}
-
-void Snake::lookThingsUp( double *buffer, const QPoint &foodPos)
-{
-    switch (input_mode) {
-    case Snake::TURN_MODE:
-        /*
-        buffer[0]  = # Danger straight
-        buffer[1]  = # Danger right
-        buffer[2]  = # Danger left
-
-        buffer[3]  = # Move direction l
-        buffer[4]  = # Move direction r
-        buffer[5]  = # Move direction u
-        buffer[6]  = # Move direction d
-
-        buffer[7]  = # Food location l
-        buffer[8]  = # Food location r
-        buffer[9]  = # Food location u
-        buffer[10] = # Food location d
-        */
-
-
-        break;
-    case DETAILED_CLASSIC:
-    {
-
-        /*
-        buffer[0]  = Links Oben    [ Essen ] = (0|1)
-        buffer[1]  = Oben          [ Essen ] = (0|1)
-        buffer[2]  = Rechts Oben   [ Essen ] = (0|1)
-        buffer[3]  = Links         [ Essen ] = (0|1)
-        buffer[4]  = Rechts        [ Essen ] = (0|1)
-        buffer[5]  = Links Unten    [ Essen ] = (0|1)
-        buffer[6]  = Unten         [ Essen ] = (0|1)
-        buffer[7]  = Rechts Unten  [ Essen ] = (0|1)
-
-        buffer[8]  = Links Oben    [ Körper ] = (0|1)
-        buffer[9]  = Oben          [ Körper ] = (0|1)
-        buffer[10] = Rechts Oben   [ Körper ] = (0|1)
-        buffer[11] = Links         [ Körper ] = (0|1)
-        buffer[12] = Rechts        [ Körper ] = (0|1)
-        buffer[13] = Links Unten    [ Körper ] = (0|1)
-        buffer[14] = Unten         [ Körper ] = (0|1)
-        buffer[15] = Rechts Unten  [ Körper ] = (0|1)
-
-        buffer[16] = Links Oben    [ Entf. ] = (0.0 - 1.0)
-        buffer[17] = Oben          [ Entf. ] = (0.0 - 1.0)
-        buffer[18] = Rechts Oben   [ Entf. ] = (0.0 - 1.0)
-        buffer[19] = Links         [ Entf. ] = (0.0 - 1.0)
-        buffer[20] = Rechts        [ Entf. ] = (0.0 - 1.0)
-        buffer[21] = Links Unten    [ Entf. ] = (0.0 - 1.0)
-        buffer[22] = Unten         [ Entf. ] = (0.0 - 1.0)
-        buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
-
-        */
-
-        for (int i = 0; i < 24; ++i) {
-            buffer[i] = 0.0;
-        }
-
-        const QPoint &head = pos.front();
-        unsigned size = field->getSize();
-
-        auto tmp = getPos();
-
-        for(int x = 1; x < head.x(); x++ ) {
-            for(const auto & e : tmp)
-                if(QPoint(x, head.y()) == e)
-                    buffer[11] = std::max(buffer[11],  1.0 / std::abs( head.x() - e.x() ));
-        }
-        for(unsigned x = head.x() + 1; x < size; x++ ) {
-            for(const auto & e : tmp)
-                if(QPoint(x, head.y()) == e)
-                    buffer[12] = std::max(buffer[12],  1.0 / std::abs( head.x() - e.x() ));
-
-        }
-        for(int y = 1; y < head.y(); y++ ) {
-            for(const auto & e : tmp)
-                if(QPoint(head.x(), y) == e)
-                    buffer[9] = std::max(buffer[9],  1.0 / std::abs( head.y() - e.y() ));
-        }
-        for(unsigned y = head.y() + 1; y < size; y++ ) {
-            for(const auto & e : tmp)
-                if(QPoint(head.x(), y) == e)
-                    buffer[14] = std::max(buffer[14],  1.0 / std::abs( head.y() - e.y() ));
-        }
-
-
-        float dx = foodPos.x() - head.x();
-        float dy = foodPos.y() - head.y();
-
-        if (abs(dx) == abs(dy)) {
-            if (dx > 0 && dy > 0) {
-                buffer[7] = 1.0; // Rechts unten
-            } else if (dx > 0.0 && dy < 0.0) {
-                buffer[0] = 1.0; // Links oben
-            } else if (dx < 0.0 && dy > 0.0) {
-                buffer[5] = 1.0; // Links unten
-            } else if (dx < 0.0 && dy < 0.0) {
-                buffer[2] = 1.0; // Rechts oben
-            }
-        } else if (dx == 0 && dy < 0) {
-            buffer[1] = 1.0; // Geradeaus oben
-        } else if (dx == 0 && dy > 0) {
-            buffer[6] = 1.0; // Geradeaus unten
-        } else if (dy == 0 && dx < 0) {
-            buffer[3] = 1.0; // Geradeaus links
-        } else if (dy == 0 && dx > 0) {
-            buffer[4] = 1.0; // Geradeaus rechts
-        }
-
-        double max = size * sqrt(2);
-
-        double wallLeft = head.x(); // Abstand zur linken Wand
-        double wallRight = field->getSize() - head.x() + 1; // Abstand zur rechten Wand
-        double wallUp = head.y(); // Abstand zur oberen Wand
-        double wallDown = field->getSize() - head.y() + 1; // Abstand zur unteren Wand
-
-        buffer[16] = 0.0; // 1.0 / (1.0- wallUp / max); // Links Oben
-        buffer[17] = 1.0 / (1.0 -wallUp/ max) - 1; // Oben
-        buffer[18] = 0.0; //1.0 /(1.0 - wallUp/ max); // Rechts Oben
-        buffer[19] = 1.0 /(1.0 - wallLeft/ max) - 1; // Links
-        buffer[20] = 1.0 /(1.0 - wallRight/ max) - 1; // Rechts
-        buffer[21] = 0.0; //; 1.0 / (1.0 -wallDown/ max); // Links Unten
-        buffer[22] = 1.0 / (1.0 -wallDown/ max) - 1; // Unten
-        buffer[23] = 0.0; //1.0 /(1.0 - wallDown/ max); // Rechts Unten
-
-        /*buffer[8]  = Links Oben    [ Körper ] = (0|1)
-        buffer[9]  = Oben          [ Körper ] = (0|1)
-        buffer[10] = Rechts Oben   [ Körper ] = (0|1)
-        buffer[11] = Links         [ Körper ] = (0|1)
-        buffer[12] = Rechts        [ Körper ] = (0|1)
-        buffer[13] = Links Unten    [ Körper ] = (0|1)
-        buffer[14] = Unten         [ Körper ] = (0|1)
-        buffer[15] = Rechts Unten  [ Körper ] = (0|1)
-
-        buffer[16] = Links Oben    [ Entf. ] = (0.0 - 1.0)
-        buffer[17] = Oben          [ Entf. ] = (0.0 - 1.0)
-        buffer[18] = Rechts Oben   [ Entf. ] = (0.0 - 1.0)
-        buffer[19] = Links         [ Entf. ] = (0.0 - 1.0)
-        buffer[20] = Rechts        [ Entf. ] = (0.0 - 1.0)
-        buffer[21] = Links Unten    [ Entf. ] = (0.0 - 1.0)
-        buffer[22] = Unten         [ Entf. ] = (0.0 - 1.0)
-        buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
-        */
-
-        auto lineFood = QLineF(head, foodPos);
-        auto enem = getEnemyPolygon();
-
-        buffer[8]  = 0.0; //1.0 / (moves + 1.0); // übrige Leben
-        buffer[10] = enem.contains(head + QPoint(1, 0));
-        buffer[13] = lineFood.angle() / 360.0; // Winkel food
-        buffer[15] = enem.contains(head + QPoint(-1, 0));
-        buffer[16] = 0.0; // 1.0 - 1.0 / (getScore() + 1.0); // score
-        buffer[18] = enem.contains(head + QPoint(0, 1));
-        buffer[21] = 2.0 / (lineFood.length() + 1.0);  // entfernung food
-        buffer[23] = enem.contains(head + QPoint(0, -1));
-        break;
-    }
-    case CLASSIC: {
-            /*
-        buffer[0]  = Links Oben    [ Essen ] = (0|1)
-        buffer[1]  = Oben          [ Essen ] = (0|1)
-        buffer[2]  = Rechts Oben   [ Essen ] = (0|1)
-        buffer[3]  = Links         [ Essen ] = (0|1)
-        buffer[4]  = Rechts        [ Essen ] = (0|1)
-        buffer[5]  = Links Unten    [ Essen ] = (0|1)
-        buffer[6]  = Unten         [ Essen ] = (0|1)
-        buffer[7]  = Rechts Unten  [ Essen ] = (0|1)
-
-        buffer[8]  = Links Oben    [ Körper ] = (0|1)
-        buffer[9]  = Oben          [ Körper ] = (0|1)
-        buffer[10] = Rechts Oben   [ Körper ] = (0|1)
-        buffer[11] = Links         [ Körper ] = (0|1)
-        buffer[12] = Rechts        [ Körper ] = (0|1)
-        buffer[13] = Links Unten    [ Körper ] = (0|1)
-        buffer[14] = Unten         [ Körper ] = (0|1)
-        buffer[15] = Rechts Unten  [ Körper ] = (0|1)
-
-        buffer[16] = Links Oben    [ Entf. ] = (0.0 - 1.0)
-        buffer[17] = Oben          [ Entf. ] = (0.0 - 1.0)
-        buffer[18] = Rechts Oben   [ Entf. ] = (0.0 - 1.0)
-        buffer[19] = Links         [ Entf. ] = (0.0 - 1.0)
-        buffer[20] = Rechts        [ Entf. ] = (0.0 - 1.0)
-        buffer[21] = Links Unten    [ Entf. ] = (0.0 - 1.0)
-        buffer[22] = Unten         [ Entf. ] = (0.0 - 1.0)
-        buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
-
-        */
-
-            for (int i = 0; i < 24; ++i) {
-                buffer[i] = 0.0;
-            }
-
-            const QPoint &head = pos.front();
-            unsigned size = field->getSize();
-
-            auto tmp = getPos();
-
-            for(int x = 1; x < head.x(); x++ ) {
-                for(const auto & e : tmp)
-                    if(QPoint(x, head.y()) == e)
-                        buffer[11] = std::max(buffer[11],  1.0 / std::abs( head.x() - e.x() ));
-            }
-            for(unsigned x = head.x() + 1; x < size; x++ ) {
-                for(const auto & e : tmp)
-                    if(QPoint(x, head.y()) == e)
-                        buffer[12] = std::max(buffer[12],  1.0 / std::abs( head.x() - e.x() ));
-
-            }
-            for(int y = 1; y < head.y(); y++ ) {
-                for(const auto & e : tmp)
-                    if(QPoint(head.x(), y) == e)
-                        buffer[9] = std::max(buffer[9],  1.0 / std::abs( head.y() - e.y() ));
-            }
-            for(unsigned y = head.y() + 1; y < size; y++ ) {
-                for(const auto & e : tmp)
-                    if(QPoint(head.x(), y) == e)
-                        buffer[14] = std::max(buffer[14],  1.0 / std::abs( head.y() - e.y() ));
-            }
-
-
-            float dx = foodPos.x() - head.x();
-            float dy = foodPos.y() - head.y();
-
-            if (abs(dx) == abs(dy)) {
-                if (dx > 0 && dy > 0) {
-                    buffer[7] = 1.0; // Rechts unten
-                } else if (dx > 0.0 && dy < 0.0) {
-                    buffer[0] = 1.0; // Links oben
-                } else if (dx < 0.0 && dy > 0.0f )  {
-                    buffer[5] = 1.0; // Links unten
-                } else if (dx < 0.0 && dy < 0.0) {
-                    buffer[2] = 1.0; // Rechts oben
-                }
-            } else if (dx == 0 && dy < 0) {
-                buffer[1] = 1.0; // Geradeaus oben
-            } else if (dx == 0 && dy > 0) {
-                buffer[6] = 1.0; // Geradeaus unten
-            } else if (dy == 0 && dx < 0) {
-                buffer[3] = 1.0; // Geradeaus links
-            } else if (dy == 0 && dx > 0) {
-                buffer[4] = 1.0; // Geradeaus rechts
-            }
-
-            double max = size * sqrt(2);
-
-            double wallLeft = head.x(); // Abstand zur linken Wand
-            double wallRight = field->getSize() - head.x() + 1; // Abstand zur rechten Wand
-            double wallUp = head.y(); // Abstand zur oberen Wand
-            double wallDown = field->getSize() - head.y() + 1; // Abstand zur unteren Wand
-
-            buffer[16] = 0.0; // 1.0 / (1.0- wallUp / max); // Links Oben
-            buffer[17] = 1.0 / (1.0 -wallUp/ max) - 1; // Oben
-            buffer[18] = 0.0; //1.0 /(1.0 - wallUp/ max); // Rechts Oben
-            buffer[19] = 1.0 /(1.0 - wallLeft/ max) - 1; // Links
-            buffer[20] = 1.0 /(1.0 - wallRight/ max) - 1; // Rechts
-            buffer[21] = 0.0; //; 1.0 / (1.0 -wallDown/ max); // Links Unten
-            buffer[22] = 1.0 / (1.0 -wallDown/ max) - 1; // Unten
-            buffer[23] = 0.0; //1.0 /(1.0 - wallDown/ max); // Rechts Unten
-
-            /*buffer[8]  = Links Oben    [ Körper ] = (0|1)
-        buffer[9]  = Oben          [ Körper ] = (0|1)
-        buffer[10] = Rechts Oben   [ Körper ] = (0|1)
-        buffer[11] = Links         [ Körper ] = (0|1)
-        buffer[12] = Rechts        [ Körper ] = (0|1)
-        buffer[13] = Links Unten    [ Körper ] = (0|1)
-        buffer[14] = Unten         [ Körper ] = (0|1)
-        buffer[15] = Rechts Unten  [ Körper ] = (0|1)
-
-        buffer[16] = Links Oben    [ Entf. ] = (0.0 - 1.0)
-        buffer[17] = Oben          [ Entf. ] = (0.0 - 1.0)
-        buffer[18] = Rechts Oben   [ Entf. ] = (0.0 - 1.0)
-        buffer[19] = Links         [ Entf. ] = (0.0 - 1.0)
-        buffer[20] = Rechts        [ Entf. ] = (0.0 - 1.0)
-        buffer[21] = Links Unten    [ Entf. ] = (0.0 - 1.0)
-        buffer[22] = Unten         [ Entf. ] = (0.0 - 1.0)
-        buffer[23] = Rechts Unten  [ Entf. ] = (0.0 - 1.0)
-        */
-        break;
-    }
-    case IMAGE_BASED: {
-        int field_size = field->getSize();
-        for (int i = 0; i < field_size * field_size * 2 ; ++i)
-                buffer[i] = 0.0;
-
-        for(int i = 0; i < this->pos.size(); i++) {
-                if( (this->pos.at(i).x()-1) + (this->pos.at(i).y()-1) * field_size >= field_size*field_size || (this->pos.at(i).x()-1) + (this->pos.at(i).y()-1) * field_size < 0)
-                    qDebug() << " 1. Access: " << (this->pos.at(i).x()-1) + (this->pos.at(i).y()-1) << " Buffersize: " <<field_size * field_size << "snake: " << this->pos ;
-                buffer[ (this->pos.at(i).x()-1) + (this->pos.at(i).y()-1) * field_size] = 1.0;
-        }
-
-        if(foodPos.x() +foodPos.y() * field_size >= field_size*field_size)
-        qDebug() << " 2. Access: " << foodPos.x() +foodPos.y() * field_size;
-        buffer[field->getSize()*field->getSize() + foodPos.x() +foodPos.y() * field_size] = 1.0;
-
-        break;
-    }
-
-
-    }
-
-
-}
-
-
-
-int Snake::getLegth()
-{
-    return pos.length();
-}
-
-void Snake::richtungAendern(QPoint richtung)
-{
-    QMutexLocker m(&mutex_richtung_aendern);
-    this->richtung = richtung;
-}
-
 QPolygon Snake::getEnemyPolygon()
 {
-    if(!enemy)
-        qDebug() << "getEnemyPolygon() return empty!!!";
-
+    if (!enemy) qDebug() << "getEnemyPolygon() called with no enemy!";
     return enemy ? enemy->getPos() : QPolygon();
 }
-
-void Snake::setEnemy(Snake *enemy)
-{
-    this->enemy = enemy;
-}
-
 

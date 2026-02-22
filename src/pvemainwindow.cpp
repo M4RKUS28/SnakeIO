@@ -8,10 +8,12 @@ PvEMainWindow::PvEMainWindow(StartSettings startset, QWidget *parent)
     ui->setupUi(this);
 
     startset.ai_count = 1 + 600;
+    startset.networkConfig.snakeCount = 1 + 600;
+    startset.networkConfig.fieldSize = 40;
     int SPEED = 40000;
     timer = this->startTimer(1);
 
-    gameViewWithGame = new GraphicsView(startset, this, nullptr, 20, 40, SPEED, true);
+    gameViewWithGame = new GraphicsView(startset, this, nullptr, SPEED, true);
     gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
     gameViewWithGame->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
     ui->verticalLayoutGameField->addWidget(gameViewWithGame);
