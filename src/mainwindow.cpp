@@ -82,7 +82,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
     exit(121);
   }
 
-  diaUber->setPixmap(QPixmap("://1200x600wa.png").scaled(128, 128));
+  diaUber->setPixmap(QPixmap("://docs/1200x600wa.png").scaled(128, 128));
   ui->horizontalLayout_theme->insertWidget(
       0, diaUber->styleHandler()->getCombobox());
 
@@ -159,7 +159,7 @@ void MainWindow::evolved() {
   textUpdate();
   ui->label_count->setText(QString::number(gameViewWithGame->getAi_count()));
   ui->label_10_gen->setText(
-      QString::number(gameViewWithGame->game->population->getEvolutionNum()));
+      QString::number(gameViewWithGame->game->population->getEvolutionCount()));
   viewNet->changeNet(gameViewWithGame->game->population->netAt(
       gameViewWithGame->game->getBest()));
 }
@@ -385,7 +385,7 @@ void MainWindow::on_pushButton_import_clicked() {
          it takes longer to load*/
       false) {
     for (int i = 0; i < gameViewWithGame->getAi_count(); i++) {
-      gameViewWithGame->game->population->netAt(i)->load_from(d.toStdString() +
+      gameViewWithGame->game->population->netAt(i)->loadFrom(d.toStdString() +
                                                               "snake.csv");
       if (i % 25 == 0) {
         ui->statusbar->showMessage(
@@ -400,7 +400,7 @@ void MainWindow::on_pushButton_import_clicked() {
     // Fast load
     if (gameViewWithGame->game->population
             ->netAt(gameViewWithGame->game->getBest())
-            ->load_from(d.toStdString() + "snake.csv"))
+            ->loadFrom(d.toStdString() + "snake.csv"))
       ui->statusbar->showMessage("Erfoglreich geladen!", 2000);
     else {
       ui->statusbar->showMessage("Laden fehlgeschlagen!", 2000);
@@ -421,7 +421,7 @@ void MainWindow::on_pushButton_export_clicked() {
   if (!d.isEmpty()) {
     if (gameViewWithGame->game->population
             ->netAt(gameViewWithGame->game->getBest())
-            ->save_to(d.toStdString() + "_snake.csv") &&
+            ->saveTo(d.toStdString() + "_snake.csv") &&
         f.open(QFile::ReadWrite | QFile::Truncate) &&
         f.write(
             QString::number(this->gameViewWithGame->game->gamefield->getSeed())

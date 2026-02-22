@@ -1,7 +1,7 @@
 QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
-win32:RC_ICONS += icon.ico
+win32:RC_ICONS += icons/icon.ico
 
 CONFIG += c++17
 
@@ -42,34 +42,34 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 
-INCLUDEPATH += $$PWD/../GenNet
-DEPENDPATH += $$PWD/../GenNet
+INCLUDEPATH += $$PWD/libs/GenNet/src
+DEPENDPATH += $$PWD/libs/GenNet/src
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../GenNet/release/ -lGenNet
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../GenNet/debug/ -lGenNet
-
-
-INCLUDEPATH += $$PWD/../ViewNet
-DEPENDPATH += $$PWD/../ViewNet
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/libs/GenNet/release/ -lGenNet
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/libs/GenNet/debug/ -lGenNet
 
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../ViewNet/release/ -lViewNet
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../ViewNet/debug/ -lViewNet
+INCLUDEPATH += $$PWD/libs/ViewNet
+DEPENDPATH += $$PWD/libs/ViewNet
 
 
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/libs/ViewNet/release/ -lViewNet
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/libs/ViewNet/debug/ -lViewNet
 
 
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Bibliotheken/MUpdater/release/ -lMUpdater
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Bibliotheken/MUpdater/debug/ -lMUpdater
 
-INCLUDEPATH += $$PWD/../../Bibliotheken/MUpdater
-DEPENDPATH += $$PWD/../../Bibliotheken/MUpdater
 
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../Bibliotheken/MUpdater/release/libMUpdater.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../Bibliotheken/MUpdater/debug/libMUpdater.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../Bibliotheken/MUpdater/release/MUpdater.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../Bibliotheken/MUpdater/debug/MUpdater.lib
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/libs/MUpdaterLib/release/ -lMUpdater
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/libs/MUpdaterLib/debug/ -lMUpdater
+
+INCLUDEPATH += $$PWD/libs/MUpdaterLib/src
+DEPENDPATH += $$PWD/libs/MUpdaterLib/src
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/libs/MUpdaterLib/release/libMUpdater.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/libs/MUpdaterLib/debug/libMUpdater.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/libs/MUpdaterLib/release/MUpdater.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/libs/MUpdaterLib/debug/MUpdater.lib
 
 RESOURCES += \
     resources.qrc

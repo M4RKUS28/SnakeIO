@@ -281,7 +281,7 @@ void Game::run()
             break;
         }
         // save backup
-        population->netAt(best)->save_to("current_best_ai-bak.csv");
+        population->netAt(best)->saveTo("current_best_ai-bak.csv");
 
         usleep(100);
         emit finishedEvo();

@@ -40,7 +40,7 @@ void PvEMainWindow::on_pushButton_clicked()
     for(int i = 0; i < gameViewWithGame->getAi_count(); i++) {
         if(i == gameViewWithGame->getConnected_to())
             continue;
-        gameViewWithGame->game->population->netAt(i)->load_from("C:/Users/Markus/Nextcloud/CPP-Projekte/MachineLearning/SnakeIO/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv");
+        gameViewWithGame->game->population->netAt(i)->loadFrom("C:/Users/Markus/Nextcloud/CPP-Projekte/MachineLearning/SnakeIO/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv");
     }
 
 
