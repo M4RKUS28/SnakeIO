@@ -96,13 +96,43 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
 //  Hides all training/settings controls, auto-imports the trained CSV, and
 //  sets a comfortable playback speed so the snake is easy to follow.
 // ===========================================================================
-void MainWindow::setupDemoMode(const StartSettings& s)
+// ===========================================================================
+//  importFromPrefix()
+//  Shared helper used by both the Import button and Demo auto-load.
+//  Loads the apple seed and snake weights from <prefix>apple.seed /
+//  <prefix>snake.csv.  Returns true on success; status-bar messages on error.
+// ===========================================================================
+bool MainWindow::importFromPrefix(const QString& prefix)
+{
+    QFile ff(prefix + "apple.seed");
+    if (!ff.exists() || !ff.open(QFile::ReadOnly)) {
+        ui->statusbar->showMessage("Warnung: " + prefix + "apple.seed nicht gefunden", 2000);
+        qDebug() << "Warnung: " + prefix + "apple.seed nicht gefunden";
+    } else {
+        gameViewWithGame->game->gamefield->setSeed(ff.readAll().toULongLong());
+        qDebug() << "New Seed: " << gameViewWithGame->game->gamefield->getSeed();
+    }
+
+    if (!gameViewWithGame->game->population
+            ->netAt(gameViewWithGame->game->getBest())
+            ->loadFrom((prefix + "snake.csv").toStdString())) {
+        ui->statusbar->showMessage("Laden fehlgeschlagen!", 2000);
+        return false;
+    }
+
+    gameViewWithGame->connectToSnake(gameViewWithGame->game->getBest());
+    ui->highscore->setText("LOADED AI ID: " + QString::number(gameViewWithGame->game->getBest()));
+    textUpdate();
+    return true;
+}
+
+void MainWindow::setupDemoMode(const StartSettings& /*s*/)
 {
     // --- Hide the ViewNet visualisation panel ---
-    ui->widget_2->hide();
+    //ui->widget_2->hide();
 
     // --- Hide score/length/moves strip ---
-    ui->widget->hide();
+    //ui->widget->hide();
 
     // --- Hide everything in the right scroll panel except the 4 keep-items ---
     // Keep: pushButtonStart, pushButton (stop), radioButtonShowGrid,
@@ -119,7 +149,7 @@ void MainWindow::setupDemoMode(const StartSettings& s)
         ui->pushButton_ueber, ui->pushButton_updateWeights,
         ui->comboBoxMutAlgorithm,
         ui->doubleSpinBox_learn_rate, ui->doubleSpinBoxMutRange,
-        ui->radioButtonreconnect, ui->radioBUpdateViewNet,
+        ui->radioButtonreconnect,// ui->radioBUpdateViewNet,
         ui->checkBoxresetapples,
         ui->highscore,
     };
@@ -130,28 +160,16 @@ void MainWindow::setupDemoMode(const StartSettings& s)
     for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
         gameViewWithGame->game->snakes[i]->setSpeed(800.0);
 
+    //enale update viewnet
+    ui->radioBUpdateViewNet->toggle();//true);
+
     // --- Auto-import the trained model ---
     const QString prefix = QApplication::applicationDirPath()
                            + "/../Snakes/Release4_Medi-21-Score-147-zikzak-taktik_";
-    QFile snakeFile(prefix + "snake.csv");
-    if (snakeFile.exists()) {
-        // Load apple seed so the food sequence matches the recorded run
-        QFile seedFile(prefix + "apple.seed");
-        if (seedFile.exists() && seedFile.open(QFile::ReadOnly))
-            gameViewWithGame->game->gamefield->setSeed(seedFile.readAll().toULongLong());
-
-        // Load weights into the best net slot and track it
-        const int best = gameViewWithGame->game->getBest();
-        if (gameViewWithGame->game->population->netAt(best)
-                ->loadFrom((prefix + "snake.csv").toStdString())) {
-            gameViewWithGame->connectToSnake(best);
-            ui->statusbar->showMessage("Demo model loaded — press Start to run.", 5000);
-        } else {
-            ui->statusbar->showMessage("Demo: model file found but failed to load.", 5000);
-        }
-    } else {
-        ui->statusbar->showMessage(
-            "Demo model not found: " + prefix + "snake.csv", 8000);
+    if (!QFile(prefix + "snake.csv").exists()) {
+        ui->statusbar->showMessage("Demo model not found: " + prefix + "snake.csv", 8000);
+    } else if (importFromPrefix(prefix)) {
+        ui->statusbar->showMessage("Demo model loaded \u2014 press Start to run.", 5000);
     }
 }
 
@@ -365,6 +383,7 @@ void MainWindow::on_pushButton_2_clicked() {
   //    return;
 
   ui->pushButton->setDisabled(false);
+  gameViewWithGame->game->stop_and_reset();   // stop any running AI/evo before player
   gameViewWithGame->game->startPlayer();
   gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
   gameViewWithGame->currentSnake()->startPlayer(gameViewWithGame->currentNet());
@@ -436,50 +455,8 @@ void MainWindow::on_pushButton_import_clicked() {
     return;
   }
 
-  QFile ff(d + "apple.seed");
-  if (!ff.exists() || !ff.open(QFile::ReadOnly)) {
-    ui->statusbar->showMessage("Warnung: " + d + "apple.seed nicht gefunden",
-                               2000);
-    qDebug() << "Warnung: " + d + "apple.seed nicht gefunden";
-  } else {
-    this->gameViewWithGame->game->gamefield->setSeed(
-        ff.readAll().toULongLong());
-    qDebug() << "New Seed: "
-             << this->gameViewWithGame->game->gamefield->getSeed();
-  }
-
-  if (/*load it to all, so that random ones are good to and no autostart,b but
-         it takes longer to load*/
-      false) {
-    for (int i = 0; i < gameViewWithGame->getAi_count(); i++) {
-      gameViewWithGame->game->population->netAt(i)->loadFrom(d.toStdString() +
-                                                              "snake.csv");
-      if (i % 25 == 0) {
-        ui->statusbar->showMessage(
-            "Loaded " + QString::number(i + 1) + " / " +
-                QString::number(gameViewWithGame->getAi_count()),
-            100);
-        QApplication::processEvents();
-      }
-    }
-
-  } else {
-    // Fast load
-    if (gameViewWithGame->game->population
-            ->netAt(gameViewWithGame->game->getBest())
-            ->loadFrom(d.toStdString() + "snake.csv"))
-      ui->statusbar->showMessage("Erfoglreich geladen!", 2000);
-    else {
-      ui->statusbar->showMessage("Laden fehlgeschlagen!", 2000);
-      return;
-    }
-
-    gameViewWithGame->connectToSnake(gameViewWithGame->game->getBest());
-  }
-
-  ui->highscore->setText("LOADED AI ID: " +
-                         QString::number(gameViewWithGame->game->getBest()));
-  textUpdate();
+  if (importFromPrefix(d))
+    ui->statusbar->showMessage("Erfoglreich geladen!", 2000);
 }
 
 void MainWindow::on_pushButton_export_clicked() {

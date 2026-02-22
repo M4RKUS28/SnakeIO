@@ -513,7 +513,7 @@ void StartDialog::on_pushButton_8_clicked()   // Exit
 void StartDialog::onDemoClicked()   // Demo Mode
 {
     startSettings.appmode       = StartSettings::APPMODE::DEMO;
-    startSettings.networkConfig = NetworkConfig::makeDemo();
-    startSettings.ai_count      = startSettings.networkConfig.snakeCount;
+    startSettings.networkConfig = NetworkConfig::makeDemo(21, 1);  // 1 snake for demo
+    startSettings.ai_count      = 1;
     this->accept();
 }

@@ -174,8 +174,13 @@ void Snake::run()
         ++survive_time;
     }
 
+    // Only signal a real death when the loop exited naturally (not via
+    // requestInterruption).  Emitting died() on an externally stopped snake
+    // causes the queued signal to arrive after stop_and_reset() returns,
+    // which decrements living_snakes_count to 0 and re-triggers evolution.
     lebt_noch = false;
-    emit died(num_id);
+    if (!isInterruptionRequested())
+        emit died(num_id);
 }
 
 // ===========================================================================

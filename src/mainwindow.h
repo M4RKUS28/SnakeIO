@@ -73,6 +73,7 @@ private slots:
 
 private:
     void setupDemoMode(const StartSettings& s);
+    bool importFromPrefix(const QString& prefix);
 
     Ui::MainWindow *ui;
     QGraphicsScene * viewNetScene;
