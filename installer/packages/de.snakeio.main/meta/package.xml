@@ -4,7 +4,7 @@
    <Description></Description>
    <Version>1.1.2</Version>
    <Default>true</Default>
-   <ReleaseDate>2025-01-16</ReleaseDate>
+   <ReleaseDate>2026-02-21</ReleaseDate>
    <Operations>
         <Operation name="Extract">
               <Argument>@TargetDir@/bin/</Argument>
