@@ -31,9 +31,6 @@ StartDialog::StartDialog(QWidget *parent)
     ui->stackedWidget->setCurrentIndex(0);
     startSettings.app_version = version;
 
-    StyleHandler stylehandler("M$RKUS", "SnakeIO");
-    QSettings settings("", "");
-
     setupTrainingPage();
 
     // --- Add Demo button to the main menu page (page_7) ---

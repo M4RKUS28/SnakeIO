@@ -31,7 +31,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
   gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding,
                                   QSizePolicy::Policy::Expanding);
 
-  ui->groupBoxMiddlePart->layout()->addWidget(gameViewWithGame);
+  ui->widgetGameScene->layout()->addWidget(gameViewWithGame);
 
   ui->splitter->setSizes(
       QList<int>{0, this->width() - ui->splitter->widget(2)->width(),
@@ -104,7 +104,6 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
     exit(121);
   }
 
-  diaUber->styleHandler()->setStyle("windows11");
   diaUber->setPixmap(QPixmap("://docs/1200x600wa.png").scaled(128, 128));
 
   if (s.appmode == StartSettings::DEMO)
