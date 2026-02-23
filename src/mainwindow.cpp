@@ -348,6 +348,10 @@ void MainWindow::on_radioButtonrays_clicked(bool checked) {
   gameViewWithGame->setShowRays(checked);
 }
 
+void MainWindow::on_radioButtonHiddenApple_clicked(bool checked) {
+  gameViewWithGame->setHiddenApple(checked);
+}
+
 void MainWindow::on_radioButtonreconnect_clicked(bool checked) {
   gameViewWithGame->setRreconnect(checked);
 }

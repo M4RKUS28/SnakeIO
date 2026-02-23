@@ -103,6 +103,26 @@ void GraphicsView::setShowRays(bool newShowRays)
     showRays = newShowRays;
 }
 
+void GraphicsView::setHiddenApple(bool enabled)
+{
+    hiddenApple = enabled;
+    updateAppleVisibility();
+}
+
+void GraphicsView::updateAppleVisibility()
+{
+    if (!hiddenApple) {
+        apple->show();
+        return;
+    }
+    // Food is on one of the 8 compass/diagonal rays from head when:
+    //   same column (N/S), same row (E/W), or same-distance diagonal (NE/NW/SE/SW)
+    const int dx = lastFoodGrid.x() - lastHeadGrid.x();
+    const int dy = lastFoodGrid.y() - lastHeadGrid.y();
+    const bool onRay = (dx == 0) || (dy == 0) || (qAbs(dx) == qAbs(dy));
+    if (onRay) apple->show(); else apple->hide();
+}
+
 void GraphicsView::setRreconnect(bool newRreconnect)
 {
     rreconnect = newRreconnect;
@@ -136,6 +156,7 @@ void GraphicsView::connectToSnake(int id)
     emit fokus_changed(id);
 
     apple->setPos(currentSnake()->getCurrentFood() * 20);
+    lastFoodGrid = currentSnake()->getCurrentFood();
 
     if(/*!isPvE &&*/ rreconnect && !game->snakes[id]->getLebt_noch()) {
         reconnect(-1);
@@ -144,6 +165,10 @@ void GraphicsView::connectToSnake(int id)
 
 void GraphicsView::snake_moved(QPolygon newPos, int id, bool isFirstCall)
 {
+    // Save head grid position BEFORE the pixel transform
+    if (isFirstCall)
+        lastHeadGrid = newPos.at(0);
+
     // qDebug() << "snake_moved: " << isFirstCall << " --> " << newPos;
     for(auto & e : newPos) {
         e *= 20;
@@ -184,8 +209,10 @@ void GraphicsView::snake_moved(QPolygon newPos, int id, bool isFirstCall)
         rays->hide();
 
     //update stats, if connected to snake
-    if(id == connected_to)
+    if(id == connected_to) {
+        updateAppleVisibility();
         emit textUpdateNeeded();
+    }
 
 
     if(isPvE && isFirstCall && game->snakes[id]->getEnemy()) {
@@ -202,9 +229,11 @@ void GraphicsView::snake_moved(QPolygon newPos, int id, bool isFirstCall)
 
 void GraphicsView::apple_pos_changed(QPoint newPos, int id)
 {
-    if(id == connected_to)
+    if(id == connected_to) {
+        lastFoodGrid = newPos;  // newPos is grid coords
         apple->setPos(newPos * 20);
-    else
+        updateAppleVisibility();
+    } else
         std::cerr << "wrong id" << std::endl;
 }
 

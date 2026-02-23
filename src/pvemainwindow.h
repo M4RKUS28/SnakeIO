@@ -3,6 +3,7 @@
 
 #include "graphicsview.h"
 #include "startdialog.h"
+#include <QCheckBox>
 #include <QMainWindow>
 #include <QLabel>
 #include <QPushButton>
@@ -35,9 +36,11 @@ public:
 private slots:
     void onStartPause();
     void onReset();
+    void onHome();
     void onPlayerDied(int id);
     void onAiDied(int id);
     void updateScores();
+    void onHiddenAppleToggled(bool checked);
 
 private:
     // ------------------------------------------------------------------ UI
@@ -64,6 +67,8 @@ private:
     QLabel*      resultLabel       = nullptr;
     QPushButton* startPauseBtn     = nullptr;
     QPushButton* resetBtn          = nullptr;
+    QPushButton* homeBtn           = nullptr;
+    QCheckBox*   hiddenAppleChk    = nullptr;
 
     bool paused = false;
     double playerDeadRampSpeed = 800.0; // starts at player's normal speed

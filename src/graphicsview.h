@@ -44,17 +44,22 @@ public:
     QGraphicsEllipseItem * apple;
 
     void setShowRays(bool newShowRays);
+    void setHiddenApple(bool enabled);
 
     void setRreconnect(bool newRreconnect);
 
 private:
     int ai_count;
     bool showRays;
+    bool hiddenApple = false;  // show apple only when a ray crosses it
     bool rreconnect;
 
     int connected_to;
     bool isPvE;
     QMutex reconnectMutex;
+
+    QPoint lastHeadGrid;  // head position in grid coords, updated each snake_moved
+    QPoint lastFoodGrid;  // food position in grid coords, updated each apple_pos_changed
 
 signals:
     void textUpdateNeeded();
@@ -65,6 +70,8 @@ private slots:
     void apple_pos_changed(QPoint newPos, int id);
     void reconnect(int id);
     void setNewFokusToBest(int id, int, int);
+
+    void updateAppleVisibility();  // shows/hides apple according to hiddenApple+ray check
 
 
 

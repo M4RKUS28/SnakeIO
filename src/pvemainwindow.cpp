@@ -118,13 +118,19 @@ void PvEMainWindow::buildUi()
     }
 
     // ---- Buttons ----
-    startPauseBtn = new QPushButton("▶  Start");
-    resetBtn      = new QPushButton("↺  Reset");
+    startPauseBtn  = new QPushButton("▶  Start");
+    resetBtn       = new QPushButton("↺  Reset");
+    homeBtn        = new QPushButton("🏠  Home");
+    hiddenAppleChk = new QCheckBox("Apfel verstecken");
     QFont bf = startPauseBtn->font(); bf.setPointSize(12); bf.setBold(true);
     startPauseBtn->setFont(bf);
     resetBtn->setFont(bf);
+    homeBtn->setFont(bf);
+    QFont cf = hiddenAppleChk->font(); cf.setPointSize(12); hiddenAppleChk->setFont(cf);
     startPauseBtn->setMinimumHeight(40);
     resetBtn->setMinimumHeight(40);
+    homeBtn->setMinimumHeight(40);
+    hiddenAppleChk->setMinimumHeight(40);
 
     // ---- Result label ----
     resultLabel = new QLabel("");
@@ -146,10 +152,12 @@ void PvEMainWindow::buildUi()
     fieldsRow->addLayout(makeCol(playerTitle, playerScoreLabel, playerLengthLabel, playerView));
 
     QHBoxLayout* btnRow = new QHBoxLayout;
+    btnRow->addWidget(homeBtn);
     btnRow->addStretch();
     btnRow->addWidget(startPauseBtn);
     btnRow->addWidget(resetBtn);
     btnRow->addStretch();
+    btnRow->addWidget(hiddenAppleChk);
 
     QVBoxLayout* root = new QVBoxLayout;
     root->addLayout(fieldsRow, 1);
@@ -161,8 +169,10 @@ void PvEMainWindow::buildUi()
     setCentralWidget(central);
 
     // ---- Connections ----
-    connect(startPauseBtn, &QPushButton::clicked, this, &PvEMainWindow::onStartPause);
-    connect(resetBtn,      &QPushButton::clicked, this, &PvEMainWindow::onReset);
+    connect(startPauseBtn,  &QPushButton::clicked,   this, &PvEMainWindow::onStartPause);
+    connect(resetBtn,       &QPushButton::clicked,   this, &PvEMainWindow::onReset);
+    connect(homeBtn,        &QPushButton::clicked,   this, &PvEMainWindow::onHome);
+    connect(hiddenAppleChk, &QCheckBox::toggled,     this, &PvEMainWindow::onHiddenAppleToggled);
 
     // Score updates
     connect(aiView,     &GraphicsView::textUpdateNeeded, this, &PvEMainWindow::updateScores);
@@ -267,6 +277,19 @@ void PvEMainWindow::onReset()
     updateScores();
     paused = false;
     setState(State::IDLE);
+}
+
+void PvEMainWindow::onHome()
+{
+    aiView->game->stop_and_reset();
+    playerView->game->stop_and_reset();
+    close();  // main.cpp loop will re-show StartDialog
+}
+
+void PvEMainWindow::onHiddenAppleToggled(bool checked)
+{
+    aiView->setHiddenApple(checked);
+    playerView->setHiddenApple(checked);
 }
 
 void PvEMainWindow::onPlayerDied(int /*id*/)

@@ -43,6 +43,7 @@ private slots:
     void on_doubleSpinBox_speed_editingFinished();
 
     void on_radioButtonrays_clicked(bool checked);
+    void on_radioButtonHiddenApple_clicked(bool checked);
 
     void on_radioButtonreconnect_clicked(bool checked);
 

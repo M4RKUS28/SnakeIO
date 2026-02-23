@@ -380,6 +380,16 @@
              </property>
             </widget>
            </item>
+           <item row="23" column="0">
+            <widget class="QRadioButton" name="radioButtonHiddenApple">
+             <property name="text">
+              <string>Hide Apple (off-ray)</string>
+             </property>
+             <property name="autoExclusive">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
            <item row="32" column="0" colspan="2">
             <spacer name="verticalSpacer_4">
              <property name="orientation">
