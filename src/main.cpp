@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "pvemainwindow.h"
 #include "startdialog.h"
-#include "stylehandler.h"
 #include <QApplication>
 
 QString StartDialog::version = "1.1.2";
@@ -13,9 +12,6 @@ int Snake::snake_add_moves_per_apple = 100;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-
-    StyleHandler globalStyle("M$RKUS", "SnakeIO");
-    globalStyle.setStyle("windows11");
 
     StartDialog s;
 

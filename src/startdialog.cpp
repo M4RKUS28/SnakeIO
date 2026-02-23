@@ -503,8 +503,8 @@ void StartDialog::onAddNeuron()
     inputTable->insertRow(row);
     // Default: first feature in the list (FOOD_DIR_NW)
     populateInputRow(row, InputNeuronConfig{ InputFeature::FOOD_DIR_NW, 0 });
-    // Switch preset combo to "Custom"
-    if (preConfigCombo) preConfigCombo->setCurrentIndex(3);
+    // Switch preset combo to "Custom" (data value 3, regardless of list position)
+    if (preConfigCombo) preConfigCombo->setCurrentIndex(preConfigCombo->findData(3));
     updateInputCountLabel();
 }
 
@@ -518,14 +518,14 @@ void StartDialog::onRemoveNeuron()
     const int row = inputTable->currentRow();
     if (row >= 0)
         inputTable->removeRow(row);
-    if (preConfigCombo) preConfigCombo->setCurrentIndex(3);
+    if (preConfigCombo) preConfigCombo->setCurrentIndex(preConfigCombo->findData(3));
     updateInputCountLabel();
 }
 
 void StartDialog::onAddHiddenLayer()
 {
     addHiddenLayerRow(HiddenLayerConfig{ 25, "SUM", "RELU" });
-    if (preConfigCombo) preConfigCombo->setCurrentIndex(3);
+    if (preConfigCombo) preConfigCombo->setCurrentIndex(preConfigCombo->findData(3));
 }
 
 void StartDialog::onRemoveHiddenLayer()
@@ -533,7 +533,7 @@ void StartDialog::onRemoveHiddenLayer()
     const int row = hiddenLayerTable->currentRow();
     if (row >= 0)
         hiddenLayerTable->removeRow(row);
-    if (preConfigCombo) preConfigCombo->setCurrentIndex(3);
+    if (preConfigCombo) preConfigCombo->setCurrentIndex(preConfigCombo->findData(3));
 }
 
 void StartDialog::updateInputCountLabel()

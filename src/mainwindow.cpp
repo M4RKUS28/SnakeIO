@@ -30,7 +30,9 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
                        sliderToSpeed(ui->sliderSpeed->value()));
   gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding,
                                   QSizePolicy::Policy::Expanding);
-  ui->groupBoxGameScene->layout()->addWidget(gameViewWithGame);
+
+  ui->groupBoxMiddlePart->layout()->addWidget(gameViewWithGame);
+
   ui->splitter->setSizes(
       QList<int>{0, this->width() - ui->splitter->widget(2)->width(),
                  ui->splitter->widget(2)->width()});
@@ -96,14 +98,14 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
   diaUber = new DialogUeber(
       QApplication::applicationDirPath() + "/../SnakeIOMaintenanceTool.exe",
       "M$RKUS", "SnakeIO", s.app_version, Qt::red, this, false, true);
+
   if (diaUber->updater()->getMajorVersion() != 1) {
     std::cerr << "Wrong Updater Lib Version !" << std::endl;
     exit(121);
   }
 
+  diaUber->styleHandler()->setStyle("windows11");
   diaUber->setPixmap(QPixmap("://docs/1200x600wa.png").scaled(128, 128));
-  // Always use Windows 11 (windowsvista) style — theme selector removed
-  diaUber->styleHandler()->setStyle("windowsvista");
 
   if (s.appmode == StartSettings::DEMO)
     setupDemoMode(s);
@@ -427,12 +429,17 @@ void MainWindow::on_pushButton_2_clicked() {
   //    return;
 
   // Stop any running AI/evo before starting player mode
-  aiRunning = false;
-  ui->pushButtonStartStop->setText("\u25B6  Start AIs");
   gameViewWithGame->game->stop_and_reset();
   gameViewWithGame->game->startPlayer();
   gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
   gameViewWithGame->currentSnake()->startPlayer(gameViewWithGame->currentNet());
+
+  // Mark as "running" so the Start/Stop button acts as Stop
+  aiRunning = true;
+  ui->pushButtonStartStop->setText("\u23F9  Stop");
+
+  // Give keyboard focus to the game view so arrow keys are received
+  gameViewWithGame->setFocus();
 }
 
 // void MainWindow::on_radioButtonAutoRate_clicked()
