@@ -30,15 +30,16 @@ public:
 
 
 private slots:
-    void on_pushButtonStart_clicked();
+    // Combined Start/Stop toggle (replaces separate pushButtonStart + pushButton)
+    void on_pushButtonStartStop_clicked();
+    // pushButton_7 now acts as Home — see on_pushButton_7_clicked()
+    void on_pushButton_7_clicked();
 
     void bestSnakeChanged(int, int, int);
     void evolved();
     void snakeCountChanged(int ic);
     void textUpdate();
     void newFokus(unsigned id);
-
-    void on_pushButton_clicked();
 
     void on_sliderSpeed_valueChanged(int value);
 
@@ -61,12 +62,9 @@ private slots:
 
     void on_pushButton_4_clicked();
 
+    void on_pushButton_8_clicked();
+
     void on_radioButtonShowGrid_clicked(bool checked);
-
-    void on_pushButton_ueber_clicked();
-
-    void on_pushButton_7_clicked();
-
 
     void on_pushButton_import_clicked();
 
@@ -81,6 +79,8 @@ private:
     ViewNet * viewNet;
     DialogUeber * diaUber;
     GraphicsView * gameViewWithGame;
+
+    bool aiRunning = false;   ///< Tracks whether AIs are currently running
 
 
     // QObject interface

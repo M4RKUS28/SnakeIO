@@ -44,6 +44,12 @@ void GameField::popBack()
         applePos.pop_back();
 }
 
+void GameField::removeAppleAt(int index)
+{
+    if (index >= 0 && index < applePos.size())
+        applePos.removeAt(index);
+}
+
 void GameField::addCornerApples()
 {
     QPoint m = QPoint(size / 2, size / 2);

@@ -1,9 +1,11 @@
 #include "startdialog.h"
 #include "stylehandler.h"
+#include "dialogueber.h"
 #include "ui_startdialog.h"
 
 #include <QSettings>
 #include <QFont>
+#include <QApplication>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -50,6 +52,27 @@ StartDialog::StartDialog(QWidget *parent)
         // The last real item is the Exit button row; insert one slot before it.
         menuLayout->insertLayout(menuLayout->count() - 3, row);
         connect(demoBtn, &QPushButton::clicked, this, &StartDialog::onDemoClicked);
+
+        // --- Über button (small, bottom-right footer) ---
+        auto* uberBtn = new QPushButton("ℹ  Über SnakeIO", menuPage);
+        QFont uf = uberBtn->font();
+        uf.setPointSize(9);
+        uberBtn->setFont(uf);
+        uberBtn->setFlat(true);
+        uberBtn->setStyleSheet("QPushButton { color: gray; border: none; } "
+                               "QPushButton:hover { color: palette(text); }");
+        QHBoxLayout* uberRow = new QHBoxLayout;
+        uberRow->addStretch();
+        uberRow->addWidget(uberBtn);
+        menuLayout->addLayout(uberRow);
+
+        connect(uberBtn, &QPushButton::clicked, this, [this]() {
+            DialogUeber dlg(
+                QApplication::applicationDirPath() + "/../SnakeIOMaintenanceTool.exe",
+                "M$RKUS", "SnakeIO", version, Qt::red, this, false, false);
+            dlg.setPixmap(QPixmap("://docs/1200x600wa.png").scaled(128, 128));
+            dlg.exec();
+        });
     }
 }
 

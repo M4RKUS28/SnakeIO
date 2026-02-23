@@ -22,6 +22,10 @@ public:
     void reset(size_t seed = 0);
     void popBack();
     void addCornerApples();
+    void removeAppleAt(int index);
+
+    /** @brief Read-only access to the full apple list (thread-unsafe, call only from UI thread). */
+    const QVector<QPoint>& getApples() const { return applePos; }
 
     int getSize() const;
 

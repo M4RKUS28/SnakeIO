@@ -3,6 +3,13 @@
 #include "config/inputconfig.h"
 #include <QFile>
 #include <QTemporaryFile>
+#include <QDialog>
+#include <QListWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <algorithm>
 #include <cmath>
 
 // Logarithmic mapping: slider 1–1000  →  speed 100–99 999 999 %
@@ -23,7 +30,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
                        sliderToSpeed(ui->sliderSpeed->value()));
   gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding,
                                   QSizePolicy::Policy::Expanding);
-  ui->widget->layout()->addWidget(gameViewWithGame);
+  ui->groupBoxGameScene->layout()->addWidget(gameViewWithGame);
   ui->splitter->setSizes(
       QList<int>{0, this->width() - ui->splitter->widget(2)->width(),
                  ui->splitter->widget(2)->width()});
@@ -95,10 +102,8 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
   }
 
   diaUber->setPixmap(QPixmap("://docs/1200x600wa.png").scaled(128, 128));
-  ui->horizontalLayout_theme->insertWidget(
-      0, diaUber->styleHandler()->getCombobox());
-
-  ui->pushButton->setDisabled(true);
+  // Always use Windows 11 (windowsvista) style — theme selector removed
+  diaUber->styleHandler()->setStyle("windowsvista");
 
   if (s.appmode == StartSettings::DEMO)
     setupDemoMode(s);
@@ -176,50 +181,32 @@ bool MainWindow::importFromPrefix(const QString& prefix)
 
 void MainWindow::setupDemoMode(const StartSettings& /*s*/)
 {
-    // --- Hide the ViewNet visualisation panel ---
-    //ui->widget_2->hide();
+    // --- Hide training-only group boxes ---
+    ui->groupBoxStatus->hide();
+    ui->groupBoxTraining->hide();
+    ui->groupBoxSnake->hide();
+    ui->groupBoxApple->hide();
 
-    // --- Hide score/length/moves strip ---
-    //ui->widget->hide();
-
-    // --- Hide everything in the right scroll panel except the 4 keep-items ---
-    // Keep: pushButtonStart, pushButton (stop), radioButtonShowGrid,
-    //       radioButtonrays, sliderSpeed  (+ label_8 + labelSpeedVal).
-    const QList<QWidget*> toHide = {
-        ui->line,   ui->line_2, ui->line_4, ui->line_5, ui->label_14, ui->label_max_moves, ui->score, ui->highscore, ui->laength, ui->moves_left,  diaUber->styleHandler()->getCombobox(), ui->line_8,
-        ui->line_6, ui->line_7,
-        ui->label,  ui->label_2, ui->label_3, ui->label_4,
-        ui->label_5, ui->label_6, ui->label_7, ui->label_9,
-        ui->label_count, ui->label_10_gen, ui->label_ai_num,
-        ui->pushButton_2, ui->pushButton_3, ui->pushButton_4,
-        ui->pushButton_7, ui->pushButton_8,
-        ui->pushButton_export, ui->pushButton_import,
-        ui->pushButton_ueber, ui->pushButton_updateWeights,
-        ui->comboBoxMutAlgorithm,
-        ui->doubleSpinBox_learn_rate, ui->doubleSpinBoxMutRange,
-        ui->radioButtonreconnect, ui->radioBUpdateViewNet,
-        ui->checkBoxresetapples,
-        ui->highscore,
-    };
-    for (QWidget* w : toHide) w->hide();
-
-    // --- Expand all splitter panes equally (widget(0) was collapsed at startup) ---
+    // --- Expand all splitter panes equally ---
     ui->splitter->setSizes(QList<int>{1, 1, 1});
 
-    // --- Set slow demo speed (≈ 8 steps/sec: 100/speed_game seconds per step) ---
-    ui->sliderSpeed->setValue(speedToSlider(800.0));  // ~800%
+    // --- Set comfortable demo speed (~800%) ---
+    ui->sliderSpeed->setValue(speedToSlider(800.0));
     ui->labelSpeedVal->setText("800 %");
     for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
         gameViewWithGame->game->snakes[i]->setSpeed(800.0);
 
-    //enale update viewnet
-    ui->radioBUpdateViewNet->setChecked(true);//true);
+    // --- Enable network weight visualization ---
+    ui->radioBUpdateViewNet->setChecked(true);
 
-    // --- Auto-import the trained model ---
+    // --- Change Start button label for Demo ---
+    ui->pushButtonStartStop->setText("▶  Demo starten");
+
+    // --- Auto-import the trained demo model ---
     if (!QFile(":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv").exists()) {
-        ui->statusbar->showMessage("Demo model not found:  snake.csv", 8000);
+        ui->statusbar->showMessage("Demo model not found: snake.csv", 8000);
     } else if (importFromPrefix(":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_")) {
-        ui->statusbar->showMessage("Demo model loaded \u2014 press Start to run.", 5000);
+        ui->statusbar->showMessage("Demo model geladen \u2014 Starten zum Abspielen.", 5000);
     }
 }
 
@@ -233,14 +220,27 @@ MainWindow::~MainWindow() {
   delete diaUber;
 }
 
-void MainWindow::on_pushButtonStart_clicked() {
-  this->ui->pushButtonStart->setDisabled(true);
-  textUpdate();
-  gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
-  gameViewWithGame->game->startAIs(gameViewWithGame->getConnected_to());
-  ui->label_count->setText(QString::number(gameViewWithGame->getAi_count()));
-  ui->pushButton->setDisabled(false);
+void MainWindow::on_pushButtonStartStop_clicked() {
+  if (!aiRunning) {
+    // --- Start ---
+    aiRunning = true;
+    ui->pushButtonStartStop->setText("\u23F9  Stop");
+    textUpdate();
+    gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
+    gameViewWithGame->game->startAIs(gameViewWithGame->getConnected_to());
+    ui->label_count->setText(QString::number(gameViewWithGame->getAi_count()));
+  } else {
+    // --- Stop ---
+    aiRunning = false;
+    ui->pushButtonStartStop->setText("\u25B6  Start AIs");
+    gameViewWithGame->game->stop_and_reset();
+    if (gameViewWithGame->game->isRunning())
+      gameViewWithGame->game->quit();
+    textUpdate();
+  }
 }
+
+// on_pushButtonHome_clicked removed — "Home" functionality moved to pushButton_7
 
 void MainWindow::bestSnakeChanged(int id, int val, int leng) {
   ui->highscore->setText(" ID: " + QString::number(id) +
@@ -270,14 +270,12 @@ void MainWindow::bestSnakeChanged(int id, int val, int leng) {
     // Redraw and update weights
     viewNet->updateWeightsLabels();
   }
-
-  this->ui->pushButtonStart->setDisabled(false);
-  ui->pushButton->setDisabled(true);
 }
 
 void MainWindow::evolved() {
-  this->ui->pushButtonStart->setDisabled(true);
-  ui->pushButton->setDisabled(false);
+  // Still running — update the start/stop button to reflect "running" state
+  aiRunning = true;
+  ui->pushButtonStartStop->setText("\u23F9  Stop");
 
   // Update settings:
   //    if(ui->radioButtonAutoRate->isChecked()) {
@@ -339,15 +337,7 @@ void MainWindow::newFokus(unsigned int id) {
   ui->label_ai_num->setText(QString::number(id));
 }
 
-void MainWindow::on_pushButton_clicked() {
-  ui->pushButton->setDisabled(true);
-  this->ui->pushButtonStart->setDisabled(false);
-
-  gameViewWithGame->game->stop_and_reset();
-  if (this->gameViewWithGame->game->isRunning())
-    this->gameViewWithGame->game->quit();
-  // ui->pushButton->setDisabled(false);
-}
+// (on_pushButton_clicked removed — Stop is now part of pushButtonStartStop toggle)
 
 void MainWindow::on_sliderSpeed_valueChanged(int value) {
   const double speed = sliderToSpeed(value);
@@ -436,8 +426,10 @@ void MainWindow::on_pushButton_2_clicked() {
 
   //    return;
 
-  ui->pushButton->setDisabled(false);
-  gameViewWithGame->game->stop_and_reset();   // stop any running AI/evo before player
+  // Stop any running AI/evo before starting player mode
+  aiRunning = false;
+  ui->pushButtonStartStop->setText("\u25B6  Start AIs");
+  gameViewWithGame->game->stop_and_reset();
   gameViewWithGame->game->startPlayer();
   gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
   gameViewWithGame->currentSnake()->startPlayer(gameViewWithGame->currentNet());
@@ -475,6 +467,58 @@ void MainWindow::on_pushButton_4_clicked() {
   gameViewWithGame->game->gamefield->addCornerApples();
 }
 
+void MainWindow::on_pushButton_8_clicked() {
+  // Build a modal for viewing and editing the apple list
+  QDialog dlg(this);
+  dlg.setWindowTitle("Apfel-Liste bearbeiten");
+  dlg.setMinimumSize(320, 400);
+
+  auto* layout = new QVBoxLayout(&dlg);
+
+  QLabel* info = new QLabel(
+      "Äpfel werden in dieser Reihenfolge nacheinander gesetzt.\n"
+      "Wähle Einträge aus und klicke 'Löschen' um sie zu entfernen.", &dlg);
+  info->setWordWrap(true);
+  layout->addWidget(info);
+
+  auto* list = new QListWidget(&dlg);
+  list->setSelectionMode(QAbstractItemView::ExtendedSelection);
+  const QVector<QPoint>& apples = gameViewWithGame->game->gamefield->getApples();
+  for (int i = 0; i < apples.size(); ++i) {
+    list->addItem(QString("Apfel #%1:  (%2, %3)").arg(i).arg(apples[i].x()).arg(apples[i].y()));
+  }
+  layout->addWidget(list, 1);
+
+  auto* btnRow = new QHBoxLayout;
+  auto* delBtn   = new QPushButton("🗑  Ausgewählte löschen", &dlg);
+  auto* closeBtn = new QPushButton("Schließen", &dlg);
+  btnRow->addWidget(delBtn);
+  btnRow->addStretch();
+  btnRow->addWidget(closeBtn);
+  layout->addLayout(btnRow);
+
+  connect(delBtn, &QPushButton::clicked, &dlg, [&]() {
+    // Collect selected rows in descending order so removal doesn't shift indices
+    QList<int> rows;
+    for (auto* item : list->selectedItems())
+      rows.prepend(list->row(item));
+    std::sort(rows.begin(), rows.end(), std::greater<int>());
+    for (int row : rows) {
+      gameViewWithGame->game->gamefield->removeAppleAt(row);
+      delete list->takeItem(row);
+    }
+    // Renumber labels
+    for (int i = 0; i < list->count(); ++i) {
+      const QVector<QPoint>& a = gameViewWithGame->game->gamefield->getApples();
+      if (i < a.size())
+        list->item(i)->setText(QString("Apfel #%1:  (%2, %3)").arg(i).arg(a[i].x()).arg(a[i].y()));
+    }
+  });
+  connect(closeBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
+
+  dlg.exec();
+}
+
 void MainWindow::on_radioButtonShowGrid_clicked(bool checked) {
   if (checked)
     gameViewWithGame->grid->show();
@@ -482,13 +526,13 @@ void MainWindow::on_radioButtonShowGrid_clicked(bool checked) {
     gameViewWithGame->grid->hide();
 }
 
-void MainWindow::on_pushButton_ueber_clicked() { diaUber->show(); }
+// on_pushButton_ueber_clicked removed — Über button moved to StartDialog
 
 // #include "setupdialog.h"
 
 void MainWindow::on_pushButton_7_clicked() {
-  //    SetUpDialog a;
-  //    a.exec();
+  gameViewWithGame->game->stop_and_reset();
+  this->close();
 }
 
 #include <QFileDialog>
