@@ -1,7 +1,5 @@
-function Component() {
-   if (installer) {
-      installer.installationFinished.connect(this, Component.prototype.installationFinished);
-   }
+   function Component() { // default constructor
+   installer.installationFinished.connect(this, Component.prototype.installationFinished);
 }
 
 Component.prototype.createOperations = function() {
