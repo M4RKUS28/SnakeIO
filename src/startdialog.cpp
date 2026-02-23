@@ -41,7 +41,7 @@ StartDialog::StartDialog(QWidget *parent)
         QFont f = demoBtn->font();
         f.setPointSize(11);
         demoBtn->setFont(f);
-        demoBtn->setMaximumWidth(220);
+        demoBtn->setMaximumWidth(300);
         QHBoxLayout* row = new QHBoxLayout;
         row->addWidget(demoBtn);
         // Insert before the last spacer (before the Exit row)

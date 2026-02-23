@@ -190,6 +190,9 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
     };
     for (QWidget* w : toHide) w->hide();
 
+    // --- Expand all splitter panes equally (widget(0) was collapsed at startup) ---
+    ui->splitter->setSizes(QList<int>{1, 1, 1});
+
     // --- Set slow demo speed (≈ 8 steps/sec: 100/speed_game seconds per step) ---
     ui->doubleSpinBox_speed->setValue(800.0);
     for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
