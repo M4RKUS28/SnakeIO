@@ -5,13 +5,13 @@
 #include <QTemporaryFile>
 #include <cmath>
 
-// Logarithmic mapping: slider 1–1000  →  speed 0.1–100 000 000 %
-// speed = 0.1 * 10^( value / 1000.0 * 9.0 )
+// Logarithmic mapping: slider 1–1000  →  speed 100–99 999 999 %
+// speed = 100 * 10^( (value-1) / 999.0 * 6.0 )
 static double sliderToSpeed(int value) {
-    return 0.1 * std::pow(10.0, value / 1000.0 * 9.0);
+    return 100.0 * std::pow(10.0, (value - 1) / 999.0 * 6.0);
 }
 static int speedToSlider(double speed) {
-    return qBound(1, static_cast<int>(std::round(std::log10(speed / 0.1) / 9.0 * 1000.0)), 1000);
+    return qBound(1, static_cast<int>(std::round(std::log10(speed / 100.0) / 6.0 * 999.0 + 1.0)), 1000);
 }
 
 MainWindow::MainWindow(StartSettings s, QWidget *parent)
