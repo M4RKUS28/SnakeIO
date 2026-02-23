@@ -72,6 +72,8 @@ InputConfig::FeatureInfo InputConfig::getFeatureInfo(InputFeature feature, int /
     case InputFeature::LEGACY_WALL_DIST_W: return { "Wall Dist W — Legacy ←",       "Wleg←",   false };
     case InputFeature::LEGACY_WALL_DIST_E: return { "Wall Dist E — Legacy →",       "Wleg→",   false };
     case InputFeature::LEGACY_WALL_DIST_S: return { "Wall Dist S — Legacy ↓",       "Wleg↓",   false };
+    case InputFeature::LEGACY_FOOD_ANGLE:  return { "Food Angle — Legacy (QLineF)",  "FAleg",   false };
+    case InputFeature::LEGACY_FOOD_DIST:   return { "Food Dist — Legacy 2/(d+1)",    "FDleg",   false };
     }
     return { "Unknown", "?", false };
 }
@@ -115,6 +117,8 @@ QVector<InputFeature> InputConfig::allFeatures()
         // Legacy wall distance
         InputFeature::LEGACY_WALL_DIST_N, InputFeature::LEGACY_WALL_DIST_W,
         InputFeature::LEGACY_WALL_DIST_E, InputFeature::LEGACY_WALL_DIST_S,
+        // Legacy food metrics
+        InputFeature::LEGACY_FOOD_ANGLE, InputFeature::LEGACY_FOOD_DIST,
     };
 }
 
@@ -307,9 +311,9 @@ NetworkConfig NetworkConfig::makeDemo(int fieldSize, int snakeCount)
     cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [10] NE body (always 0)
     cfg.inputs << InputNeuronConfig{ F::BODY_PROX_W  };  // [11] West
     cfg.inputs << InputNeuronConfig{ F::BODY_PROX_E  };  // [12] East
-    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [13] SW body (always 0)
-    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_S  };  // [14] South
-    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO   };  // [15] SE body (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_FOOD_ANGLE };  // [13] food angle (QLineF formula, overwritten in old code)
+    cfg.inputs << InputNeuronConfig{ F::BODY_PROX_S        };  // [14] South
+    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO         };  // [15] SE body (enemy west check, 0 in single-player)
 
     // --- Wall distance [16..23] --- (diagonals always 0 in old code)
     cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [16] NW wall (always 0)
@@ -317,7 +321,7 @@ NetworkConfig NetworkConfig::makeDemo(int fieldSize, int snakeCount)
     cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [18] NE wall (always 0)
     cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_W };  // [19] West
     cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_E };  // [20] East
-    cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [21] SW wall (always 0)
+    cfg.inputs << InputNeuronConfig{ F::LEGACY_FOOD_DIST   };  // [21] inverse food distance (2/(d+1), overwritten in old code)
     cfg.inputs << InputNeuronConfig{ F::LEGACY_WALL_DIST_S };  // [22] South
     cfg.inputs << InputNeuronConfig{ F::CONST_ZERO        };  // [23] SE wall (always 0)
 

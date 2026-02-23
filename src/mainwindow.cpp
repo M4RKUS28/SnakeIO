@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "config/inputconfig.h"
 #include <QFile>
+#include <QTemporaryFile>
 
 MainWindow::MainWindow(StartSettings s, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -104,6 +105,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
 // ===========================================================================
 bool MainWindow::importFromPrefix(const QString& prefix)
 {
+    // --- Seed ---
     QFile ff(prefix + "apple.seed");
     if (!ff.exists() || !ff.open(QFile::ReadOnly)) {
         ui->statusbar->showMessage("Warnung: " + prefix + "apple.seed nicht gefunden", 2000);
@@ -113,12 +115,45 @@ bool MainWindow::importFromPrefix(const QString& prefix)
         qDebug() << "New Seed: " << gameViewWithGame->game->gamefield->getSeed();
     }
 
+    // --- Weights: loadFrom() needs a real filesystem path.
+    //     If the prefix points into Qt resources (":/" prefix), copy to a
+    //     QTemporaryFile first so we can hand a normal path to loadFrom(). ---
+    QString snakePath = prefix + "snake.csv";
+    std::string loadPath;
+
+    if (snakePath.startsWith(":/")) {
+        QFile res(snakePath);
+        if (!res.open(QFile::ReadOnly)) {
+            ui->statusbar->showMessage("Laden fehlgeschlagen! (resource open)", 2000);
+            return false;
+        }
+        QTemporaryFile tmp;
+        tmp.setAutoRemove(false);   // keep alive until loadFrom() finishes
+        if (!tmp.open()) {
+            ui->statusbar->showMessage("Laden fehlgeschlagen! (tempfile)", 2000);
+            return false;
+        }
+        tmp.write(res.readAll());
+        tmp.flush();
+        loadPath = tmp.fileName().toStdString();
+        tmp.close();    // file stays on disk because AutoRemove is false
+    } else {
+        loadPath = snakePath.toStdString();
+    }
+
     if (!gameViewWithGame->game->population
             ->netAt(gameViewWithGame->game->getBest())
-            ->loadFrom((prefix + "snake.csv").toStdString())) {
+            ->loadFrom(loadPath)) {
         ui->statusbar->showMessage("Laden fehlgeschlagen!", 2000);
+        // clean up temp file if we created one
+        if (snakePath.startsWith(":/"))
+            QFile::remove(QString::fromStdString(loadPath));
         return false;
     }
+
+    // clean up temp file
+    if (snakePath.startsWith(":/"))
+        QFile::remove(QString::fromStdString(loadPath));
 
     gameViewWithGame->connectToSnake(gameViewWithGame->game->getBest());
     ui->highscore->setText("LOADED AI ID: " + QString::number(gameViewWithGame->game->getBest()));
@@ -138,7 +173,7 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
     // Keep: pushButtonStart, pushButton (stop), radioButtonShowGrid,
     //       radioButtonrays, doubleSpinBox_speed  (+ label_8 "Speed").
     const QList<QWidget*> toHide = {
-        ui->line,   ui->line_2, ui->line_4, ui->line_5,
+        ui->line,   ui->line_2, ui->line_4, ui->line_5, ui->label_14, ui->label_max_moves, ui->score, ui->highscore, ui->laength, ui->moves_left,  diaUber->styleHandler()->getCombobox(), ui->line_8,
         ui->line_6, ui->line_7,
         ui->label,  ui->label_2, ui->label_3, ui->label_4,
         ui->label_5, ui->label_6, ui->label_7, ui->label_9,
@@ -149,7 +184,7 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
         ui->pushButton_ueber, ui->pushButton_updateWeights,
         ui->comboBoxMutAlgorithm,
         ui->doubleSpinBox_learn_rate, ui->doubleSpinBoxMutRange,
-        ui->radioButtonreconnect,// ui->radioBUpdateViewNet,
+        ui->radioButtonreconnect, ui->radioBUpdateViewNet,
         ui->checkBoxresetapples,
         ui->highscore,
     };
@@ -164,11 +199,9 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
     ui->radioBUpdateViewNet->toggle();//true);
 
     // --- Auto-import the trained model ---
-    const QString prefix = QApplication::applicationDirPath()
-                           + "/../Snakes/Release4_Medi-21-Score-147-zikzak-taktik_";
-    if (!QFile(prefix + "snake.csv").exists()) {
-        ui->statusbar->showMessage("Demo model not found: " + prefix + "snake.csv", 8000);
-    } else if (importFromPrefix(prefix)) {
+    if (!QFile(":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv").exists()) {
+        ui->statusbar->showMessage("Demo model not found:  snake.csv", 8000);
+    } else if (importFromPrefix(":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_")) {
         ui->statusbar->showMessage("Demo model loaded \u2014 press Start to run.", 5000);
     }
 }

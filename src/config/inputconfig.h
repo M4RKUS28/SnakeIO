@@ -134,6 +134,14 @@ enum class InputFeature {
     LEGACY_WALL_DIST_W,
     LEGACY_WALL_DIST_E,
     LEGACY_WALL_DIST_S,
+
+    // -----------------------------------------------------------------------
+    // LEGACY FOOD METRICS  (formulas from pre-rework DETAILED_CLASSIC)
+    // Used by makeDemo() to fill buffer[13] and buffer[21] exactly as the
+    // trained model saw them.
+    // -----------------------------------------------------------------------
+    LEGACY_FOOD_ANGLE,  // QLineF(head,food).angle() / 360.0  — atan2(-dy,dx), mapped [0,1)
+    LEGACY_FOOD_DIST,   // 2.0 / (euclidean_distance + 1.0)
 };
 
 // ===========================================================================

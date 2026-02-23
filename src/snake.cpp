@@ -423,6 +423,25 @@ double Snake::evaluateFeature(const InputNeuronConfig& ncfg, const QPoint& foodP
         double mx = fsize * M_SQRT2;
         return 1.0 / (1.0 - d / mx) - 1.0;
     }
+
+    // -----------------------------------------------------------------------
+    // LEGACY FOOD METRICS  (pre-rework DETAILED_CLASSIC formulas)
+    // -----------------------------------------------------------------------
+    case InputFeature::LEGACY_FOOD_ANGLE: {
+        // Replicates: QLineF(head, foodPos).angle() / 360.0
+        // QLineF::angle() = atan2(-dy, dx) flipped to [0, 360)
+        double adx = foodPos.x() - head.x();
+        double ady = foodPos.y() - head.y();
+        double angle = std::atan2(-ady, adx) * (180.0 / M_PI);
+        if (angle < 0.0) angle += 360.0;
+        return angle / 360.0;
+    }
+    case InputFeature::LEGACY_FOOD_DIST: {
+        // Replicates: 2.0 / (QLineF(head, foodPos).length() + 1.0)
+        double adx = foodPos.x() - head.x();
+        double ady = foodPos.y() - head.y();
+        return 2.0 / (std::sqrt(adx * adx + ady * ady) + 1.0);
+    }
     }
 
     return 0.0;
