@@ -14,6 +14,7 @@
 #include <QHeaderView>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSplitter>
 #include <QFrame>
 
 // ===========================================================================
@@ -87,16 +88,33 @@ void StartDialog::setupTrainingPage()
 {
     QWidget* page = ui->stackedWidget->widget(3); // page_10
 
-    // Grab the empty layout from the .ui and populate it
-    QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(page->layout());
-    if (!mainLayout) {
-        mainLayout = new QVBoxLayout(page);
-        mainLayout->setContentsMargins(10, 10, 10, 10);
+    // Outer layout: just holds the scroll area (zero margins so it fills the page)
+    QVBoxLayout* outerLayout = qobject_cast<QVBoxLayout*>(page->layout());
+    if (!outerLayout) {
+        outerLayout = new QVBoxLayout(page);
     }
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setSpacing(0);
+
+    // Scroll area wrapping an inner widget
+    QScrollArea* scrollArea = new QScrollArea(page);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    outerLayout->addWidget(scrollArea);
+
+    QWidget* inner = new QWidget;
+    scrollArea->setWidget(inner);
+
+    // All content goes into inner's layout
+    QVBoxLayout* mainLayout = new QVBoxLayout(inner);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
     mainLayout->setSpacing(6);
 
+    // alias so rest of function is unchanged
+    QWidget* p = inner;  // used below as "page" for parent
+
     // ---- Header -------------------------------------------------------
-    QLabel* header = new QLabel("AI Training Configuration", page);
+    QLabel* header = new QLabel("AI Training Configuration", p);
     header->setFont(QFont("", 10, QFont::Bold));
     mainLayout->addWidget(header);
     mainLayout->addWidget(createHLine(page));
@@ -105,19 +123,19 @@ void StartDialog::setupTrainingPage()
     QFormLayout* formLayout = new QFormLayout;
     formLayout->setLabelAlignment(Qt::AlignRight);
 
-    preConfigCombo = new QComboBox(page);
+    preConfigCombo = new QComboBox(p);
     preConfigCombo->addItem("Classic  (24 inputs — ray cast)",       0);
     preConfigCombo->addItem("Full Field  (1 neuron per cell)",        1);
     preConfigCombo->addItem("Turn Mode  (11 inputs — relative)",      2);    preConfigCombo->addItem("Demo  (pre-rework classic, 24 inputs)",  4);    preConfigCombo->addItem("Custom  (edit manually)",                3);
     formLayout->addRow("Preset:", preConfigCombo);
 
-    fieldSizeSpinBox = new QSpinBox(page);
+    fieldSizeSpinBox = new QSpinBox(p);
     fieldSizeSpinBox->setRange(5, 50);
     fieldSizeSpinBox->setValue(20);
     fieldSizeSpinBox->setSuffix(" cells");
     formLayout->addRow("Field Size:", fieldSizeSpinBox);
 
-    snakeCountSpinBox = new QSpinBox(page);
+    snakeCountSpinBox = new QSpinBox(p);
     snakeCountSpinBox->setRange(1, 9999);
     snakeCountSpinBox->setValue(21);
     formLayout->addRow("Snake Count (AIs):", snakeCountSpinBox);
@@ -125,69 +143,84 @@ void StartDialog::setupTrainingPage()
     mainLayout->addLayout(formLayout);
     mainLayout->addWidget(createHLine(page));
 
-    // ---- Input neurons table ------------------------------------------
-    QLabel* inputHeader = new QLabel("Input Neurons", page);
+    // ---- Splitter: Input | Hidden | Output ----------------------------
+    QSplitter* splitter = new QSplitter(Qt::Vertical, p);
+    splitter->setChildrenCollapsible(false);
+
+    // -- Pane 1: Input neurons --
+    QWidget* inputPane = new QWidget;
+    QVBoxLayout* inputPaneLayout = new QVBoxLayout(inputPane);
+    inputPaneLayout->setContentsMargins(0, 4, 0, 4);
+    inputPaneLayout->setSpacing(4);
+
+    QHBoxLayout* inputTitleRow = new QHBoxLayout;
+    QLabel* inputHeader = new QLabel("Input Neurons");
     inputHeader->setFont(QFont("", 9, QFont::Bold));
-    mainLayout->addWidget(inputHeader);
+    inputCountLabel = new QLabel("Total inputs: 0");
+    inputTitleRow->addWidget(inputHeader);
+    inputTitleRow->addWidget(inputCountLabel);
+    inputTitleRow->addStretch();
+    inputPaneLayout->addLayout(inputTitleRow);
 
-    inputCountLabel = new QLabel("Total inputs: 0", page);
-    mainLayout->addWidget(inputCountLabel);
-
-    QScrollArea* inputScroll = new QScrollArea(page);
-    inputScroll->setWidgetResizable(true);
-    inputScroll->setMinimumHeight(160);
-    inputScroll->setMaximumHeight(220);
-
-    // 3 columns: Feature | Param (cell index) | Label (read-only preview)
-    inputTable = new QTableWidget(0, 3, page);
+    inputTable = new QTableWidget(0, 3);
     inputTable->setHorizontalHeaderLabels({"Feature", "Param", "Label Preview"});
     inputTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     inputTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     inputTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     inputTable->setSelectionMode(QAbstractItemView::SingleSelection);
     inputTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    inputScroll->setWidget(inputTable);
-    mainLayout->addWidget(inputScroll);
+    inputPaneLayout->addWidget(inputTable, 1);
 
     QHBoxLayout* inputBtnRow = new QHBoxLayout;
-    addNeuronBtn    = new QPushButton("+ Add Neuron",        page);
-    removeNeuronBtn = new QPushButton("— Remove Selected",   page);
+    addNeuronBtn    = new QPushButton("+ Add Neuron");
+    removeNeuronBtn = new QPushButton("— Remove Selected");
     inputBtnRow->addWidget(addNeuronBtn);
     inputBtnRow->addWidget(removeNeuronBtn);
     inputBtnRow->addStretch();
-    mainLayout->addLayout(inputBtnRow);
-    mainLayout->addWidget(createHLine(page));
+    inputPaneLayout->addLayout(inputBtnRow);
 
-    // ---- Hidden layers table ------------------------------------------
-    QLabel* hiddenHeader = new QLabel("Hidden Layers (inner network)", page);
+    splitter->addWidget(inputPane);
+
+    // -- Pane 2: Hidden layers --
+    QWidget* hiddenPane = new QWidget;
+    QVBoxLayout* hiddenPaneLayout = new QVBoxLayout(hiddenPane);
+    hiddenPaneLayout->setContentsMargins(0, 4, 0, 4);
+    hiddenPaneLayout->setSpacing(4);
+
+    QLabel* hiddenHeader = new QLabel("Hidden Layers (inner network)");
     hiddenHeader->setFont(QFont("", 9, QFont::Bold));
-    mainLayout->addWidget(hiddenHeader);
+    hiddenPaneLayout->addWidget(hiddenHeader);
 
-    // 3 columns: Neurons | Aggregation | Activation
-    hiddenLayerTable = new QTableWidget(0, 3, page);
+    hiddenLayerTable = new QTableWidget(0, 3);
     hiddenLayerTable->setHorizontalHeaderLabels({"Neurons", "Aggregation", "Activation"});
     hiddenLayerTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    hiddenLayerTable->setMinimumHeight(90);
-    hiddenLayerTable->setMaximumHeight(140);
-    mainLayout->addWidget(hiddenLayerTable);
+    hiddenPaneLayout->addWidget(hiddenLayerTable, 1);
 
     QHBoxLayout* hiddenBtnRow = new QHBoxLayout;
-    addLayerBtn    = new QPushButton("+ Add Layer",       page);
-    removeLayerBtn = new QPushButton("— Remove Layer",    page);
+    addLayerBtn    = new QPushButton("+ Add Layer");
+    removeLayerBtn = new QPushButton("— Remove Layer");
     hiddenBtnRow->addWidget(addLayerBtn);
     hiddenBtnRow->addWidget(removeLayerBtn);
     hiddenBtnRow->addStretch();
-    mainLayout->addLayout(hiddenBtnRow);
+    hiddenPaneLayout->addLayout(hiddenBtnRow);
 
-    // ---- Output layer (read-only, fixed) --------------------------------
-    QLabel* outputHeader = new QLabel("Output Layer (fixed)", page);
+    splitter->addWidget(hiddenPane);
+
+    // -- Pane 3: Output layer (fixed, read-only) --
+    QWidget* outputPane = new QWidget;
+    QVBoxLayout* outputPaneLayout = new QVBoxLayout(outputPane);
+    outputPaneLayout->setContentsMargins(0, 4, 0, 4);
+    outputPaneLayout->setSpacing(4);
+
+    QLabel* outputHeader = new QLabel("Output Layer (fixed)");
     outputHeader->setFont(QFont("", 9, QFont::Bold));
-    mainLayout->addWidget(outputHeader);
+    outputPaneLayout->addWidget(outputHeader);
 
-    QTableWidget* outputLayerTable = new QTableWidget(1, 3, page);
+    QTableWidget* outputLayerTable = new QTableWidget(1, 3);
     outputLayerTable->setHorizontalHeaderLabels({"Neurons", "Aggregation", "Activation"});
     outputLayerTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    outputLayerTable->setFixedHeight(outputLayerTable->horizontalHeader()->height() + outputLayerTable->rowHeight(0) + 4);
+    outputLayerTable->setFixedHeight(
+        outputLayerTable->horizontalHeader()->sizeHint().height() + 30);
     outputLayerTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     outputLayerTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     outputLayerTable->setSelectionMode(QAbstractItemView::NoSelection);
@@ -203,15 +236,21 @@ void StartDialog::setupTrainingPage()
     outputLayerTable->setItem(0, 0, makeOutputItem("4"));
     outputLayerTable->setItem(0, 1, makeOutputItem("SUM"));
     outputLayerTable->setItem(0, 2, makeOutputItem("SMAX  (↑ ↓ → ←)"));
-    mainLayout->addWidget(outputLayerTable);
+    outputPaneLayout->addWidget(outputLayerTable);
+    outputPaneLayout->addStretch();
 
-    mainLayout->addStretch();
+    splitter->addWidget(outputPane);
+
+    // Initial size hints: input gets most space, hidden medium, output compact
+    splitter->setSizes({200, 150, 80});
+
+    mainLayout->addWidget(splitter, 1);
 
     // ---- Navigation: Back + Start ------------------------------------
     mainLayout->addWidget(createHLine(page));
     QHBoxLayout* navRow = new QHBoxLayout;
-    QPushButton* backBtn  = new QPushButton("<",     page);
-    QPushButton* startBtn = new QPushButton("Start", page);
+    QPushButton* backBtn  = new QPushButton("<",     p);
+    QPushButton* startBtn = new QPushButton("Start", p);
     backBtn->setFixedWidth(40);
     navRow->addWidget(backBtn);
     navRow->addWidget(startBtn, 1);
@@ -495,6 +534,7 @@ void StartDialog::on_pushButton_4_clicked()   // AI Training
 {
     startSettings.appmode = StartSettings::APPMODE::TRAINING;
     ui->stackedWidget->setCurrentIndex(3);
+    resize(1200, 800);
 }
 
 void StartDialog::on_pushButton_8_clicked()   // Exit
