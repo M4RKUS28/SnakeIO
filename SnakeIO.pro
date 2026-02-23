@@ -12,37 +12,40 @@ CONFIG += c++17
 
 
 SOURCES += \
-    src/config/inputconfig.cpp \
-    src/game.cpp \
-    src/pvemainwindow.cpp \
-    src/gamefield.cpp \
-    src/graphicsview.cpp \
     src/main.cpp \
-    src/mainwindow.cpp \
-    src/snake.cpp \
-    src/startdialog.cpp
+    src/core/game.cpp \
+    src/core/gamefield.cpp \
+    src/core/snake.cpp \
+    src/config/inputconfig.cpp \
+    src/ui/graphicsview.cpp \
+    src/ui/mainwindow.cpp \
+    src/ui/pvemainwindow.cpp \
+    src/ui/startdialog.cpp
 
 HEADERS += \
+    src/core/game.h \
+    src/core/gamefield.h \
+    src/core/snake.h \
     src/config/inputconfig.h \
-    src/game.h \
-    src/pvemainwindow.h \
-    src/gamefield.h \
-    src/graphicsview.h \
-    src/mainwindow.h \
-    src/snake.h \
-    src/startdialog.h
+    src/ui/graphicsview.h \
+    src/ui/mainwindow.h \
+    src/ui/pvemainwindow.h \
+    src/ui/startdialog.h
 
 FORMS += \
-    src/pvemainwindow.ui \
-    src/mainwindow.ui \
-    src/setupdialog.ui \
-    src/startdialog.ui
+    src/ui/mainwindow.ui \
+    src/ui/pvemainwindow.ui \
+    src/ui/setupdialog.ui \
+    src/ui/startdialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
+
+# Project source directories — allows flat #include "file.h" from any module
+INCLUDEPATH += $$PWD/src/core $$PWD/src/ui $$PWD/src/config
 
 INCLUDEPATH += $$PWD/libs/GenNet/src
 DEPENDPATH += $$PWD/libs/GenNet/src
