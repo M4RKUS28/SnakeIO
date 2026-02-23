@@ -46,7 +46,7 @@ StartDialog::StartDialog(QWidget *parent)
         row->addWidget(demoBtn);
         // Insert before the last spacer (before the Exit row)
         // The last real item is the Exit button row; insert one slot before it.
-        menuLayout->insertLayout(menuLayout->count() - 2, row);
+        menuLayout->insertLayout(menuLayout->count() - 3, row);
         connect(demoBtn, &QPushButton::clicked, this, &StartDialog::onDemoClicked);
     }
 }

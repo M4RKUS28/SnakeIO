@@ -58,7 +58,9 @@ private:
 
     // central-widget children
     QLabel*      aiScoreLabel      = nullptr;
+    QLabel*      aiLengthLabel     = nullptr;
     QLabel*      playerScoreLabel  = nullptr;
+    QLabel*      playerLengthLabel = nullptr;
     QLabel*      resultLabel       = nullptr;
     QPushButton* startPauseBtn     = nullptr;
     QPushButton* resetBtn          = nullptr;

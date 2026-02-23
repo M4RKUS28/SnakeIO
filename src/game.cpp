@@ -189,8 +189,9 @@ void Game::snake_died(int)
         // update ui...
         emit bestSnakeChanged(best, best_score, snakes[best]->getLegth()); // werte mitsenden..werden in evolute resetet!
 
-        //evolute...
-        do_evolution(); // --> Thread->  take some time ->
+        //evolute... (skipped in PvE mode — no evolution, just stop)
+        if (!pve)
+            do_evolution(); // --> Thread->  take some time ->
     }
 }
 

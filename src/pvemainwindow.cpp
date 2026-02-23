@@ -109,8 +109,10 @@ void PvEMainWindow::buildUi()
     QLabel* playerTitle = makeTitle("👤 Du");
 
     aiScoreLabel     = new QLabel("Score: 0");
+    aiLengthLabel    = new QLabel("Länge: 0");
     playerScoreLabel = new QLabel("Score: 0");
-    for (QLabel* lbl : {aiScoreLabel, playerScoreLabel}) {
+    playerLengthLabel= new QLabel("Länge: 0");
+    for (QLabel* lbl : {aiScoreLabel, aiLengthLabel, playerScoreLabel, playerLengthLabel}) {
         QFont f = lbl->font(); f.setPointSize(13); lbl->setFont(f);
         lbl->setAlignment(Qt::AlignCenter);
     }
@@ -130,17 +132,18 @@ void PvEMainWindow::buildUi()
     resultLabel->setAlignment(Qt::AlignCenter);
 
     // ---- Column layouts ----
-    auto makeCol = [](QLabel* title, QLabel* score, GraphicsView* gv) {
+    auto makeCol = [](QLabel* title, QLabel* score, QLabel* length, GraphicsView* gv) {
         QVBoxLayout* col = new QVBoxLayout;
         col->addWidget(title);
         col->addWidget(score);
+        col->addWidget(length);
         col->addWidget(gv, 1);
         return col;
     };
 
     QHBoxLayout* fieldsRow = new QHBoxLayout;
-    fieldsRow->addLayout(makeCol(aiTitle, aiScoreLabel, aiView));
-    fieldsRow->addLayout(makeCol(playerTitle, playerScoreLabel, playerView));
+    fieldsRow->addLayout(makeCol(aiTitle,     aiScoreLabel,     aiLengthLabel,     aiView));
+    fieldsRow->addLayout(makeCol(playerTitle, playerScoreLabel, playerLengthLabel, playerView));
 
     QHBoxLayout* btnRow = new QHBoxLayout;
     btnRow->addStretch();
@@ -294,6 +297,10 @@ void PvEMainWindow::onAiDied(int /*id*/)
     const size_t aiScore     = aiView->game->snakes[0]->getScore();
     const size_t playerScore = playerView->game->snakes[0]->getScore();
 
+    // Stop both games cleanly
+    aiView->game->stop_and_reset();
+    playerView->game->stop_and_reset();
+
     setState(State::GAME_OVER);
 
     if (playerScore > aiScore)
@@ -308,8 +315,12 @@ void PvEMainWindow::updateScores()
 {
     aiScoreLabel->setText(
         QString("Score: %1").arg(aiView->game->snakes[0]->getScore()));
+    aiLengthLabel->setText(
+        QString("Länge: %1").arg(aiView->game->snakes[0]->getLegth()));
     playerScoreLabel->setText(
         QString("Score: %1").arg(playerView->game->snakes[0]->getScore()));
+    playerLengthLabel->setText(
+        QString("Länge: %1").arg(playerView->game->snakes[0]->getLegth()));
 }
 
 // ===========================================================================
