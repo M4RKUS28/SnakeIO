@@ -1,31 +1,73 @@
 #ifndef PVEMAINWINDOW_H
 #define PVEMAINWINDOW_H
 
-#include "src/graphicsview.h"
+#include "graphicsview.h"
+#include "startdialog.h"
 #include <QMainWindow>
+#include <QLabel>
+#include <QPushButton>
 
 namespace Ui {
 class PvEMainWindow;
 }
 
+// ===========================================================================
+//  PvEMainWindow  —  Player vs AI
+//
+//  Two independent GraphicsView / Game instances side-by-side.
+//  Left:  AI field (demo network, high speed)
+//  Right: Player field (arrow keys, human speed)
+//
+//  State machine:
+//    IDLE → RUNNING → PLAYER_DEAD (AI continues, speed ramps) → GAME_OVER
+//                   → AI_DEAD_FIRST → GAME_OVER
+// ===========================================================================
 class PvEMainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit PvEMainWindow(StartSettings startset, QWidget *parent = nullptr);
+    explicit PvEMainWindow(StartSettings s, QWidget *parent = nullptr);
     ~PvEMainWindow();
-    int timer;
+
+    int timer = 0;
 
 private slots:
-    void on_pushButton_clicked();
+    void onStartPause();
+    void onReset();
+    void onPlayerDied(int id);
+    void onAiDied(int id);
+    void updateScores();
 
-    void on_pushButton_2_clicked();
 private:
+    // ------------------------------------------------------------------ UI
+    void buildUi();
+    bool loadDemoModel(GraphicsView* gv);   // auto-imports demo CSV
+
+    // ---------------------------------------------------------------- State
+    enum class State { IDLE, RUNNING, PLAYER_DEAD, GAME_OVER } state = State::IDLE;
+    void setState(State s);
+    void showResult(const QString& msg);
+    void speedRamp();   // called each timer tick while PLAYER_DEAD
+
     Ui::PvEMainWindow *ui;
-    GraphicsView * gameViewWithGame;
+    StartSettings settings;
+
+    GraphicsView* aiView    = nullptr;  // left field  (AI)
+    GraphicsView* playerView = nullptr; // right field (player)
+
+    // central-widget children
+    QLabel*      aiScoreLabel      = nullptr;
+    QLabel*      playerScoreLabel  = nullptr;
+    QLabel*      resultLabel       = nullptr;
+    QPushButton* startPauseBtn     = nullptr;
+    QPushButton* resetBtn          = nullptr;
+
+    bool paused = false;
+    double playerDeadRampSpeed = 800.0; // starts at player's normal speed
+
 protected:
-    virtual void timerEvent(QTimerEvent *event);
+    void timerEvent(QTimerEvent*) override;
 };
 
 #endif // PVEMAINWINDOW_H

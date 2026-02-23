@@ -491,13 +491,6 @@ void StartDialog::on_pushButton_3_clicked()   // Player vs AI
     this->accept();
 }
 
-void StartDialog::on_pushButton_2_clicked()   // Single Player
-{
-    startSettings.appmode = StartSettings::APPMODE::SINGLE_PLAYER;
-    ui->stackedWidget->setCurrentIndex(2);
-    this->accept();
-}
-
 void StartDialog::on_pushButton_4_clicked()   // AI Training
 {
     startSettings.appmode = StartSettings::APPMODE::TRAINING;

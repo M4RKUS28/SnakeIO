@@ -51,7 +51,6 @@ public:
 private slots:
     // --- Mode selection buttons (wired via .ui) ---
     void on_pushButton_3_clicked();   // Player vs AI
-    void on_pushButton_2_clicked();   // Single Player
     void on_pushButton_4_clicked();   // AI Training
     void on_pushButton_8_clicked();   // Exit
     void onDemoClicked();              // Demo Mode

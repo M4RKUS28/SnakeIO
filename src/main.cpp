@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
             PvEMainWindow w(s.getStartSettings());
             w.show();
             a.exec();
-            return 0;
+            break;
         } case StartSettings::EXIT: {
             break;
         }}
