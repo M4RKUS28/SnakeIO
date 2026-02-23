@@ -257,4 +257,11 @@ namespace InputConfig {
     // Formula: sum over consecutive layer-size pairs (inputs → h0 → … → 4).
     int totalConnections(const NetworkConfig& cfg);
 
+    // Returns the C++ enum identifier string for a feature, e.g. "FOOD_DIR_N".
+    QString featureEnumName(InputFeature feature);
+
+    // Serialises a NetworkConfig to a human-readable JSON string.
+    // Suitable for writing to a companion *_arch.json file alongside the CSV.
+    QString networkConfigToJson(const NetworkConfig& cfg);
+
 } // namespace InputConfig

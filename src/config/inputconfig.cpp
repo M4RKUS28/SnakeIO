@@ -345,3 +345,131 @@ int InputConfig::totalConnections(const NetworkConfig& cfg)
     total += prev * 4;   // last hidden → output (always 4 neurons)
     return total;
 }
+
+// ===========================================================================
+//  featureEnumName()  —  returns the C++ enum identifier as a string
+// ===========================================================================
+QString InputConfig::featureEnumName(InputFeature feature)
+{
+    switch (feature) {
+    case InputFeature::FOOD_DIR_NW:          return "FOOD_DIR_NW";
+    case InputFeature::FOOD_DIR_N:           return "FOOD_DIR_N";
+    case InputFeature::FOOD_DIR_NE:          return "FOOD_DIR_NE";
+    case InputFeature::FOOD_DIR_W:           return "FOOD_DIR_W";
+    case InputFeature::FOOD_DIR_E:           return "FOOD_DIR_E";
+    case InputFeature::FOOD_DIR_SW:          return "FOOD_DIR_SW";
+    case InputFeature::FOOD_DIR_S:           return "FOOD_DIR_S";
+    case InputFeature::FOOD_DIR_SE:          return "FOOD_DIR_SE";
+    case InputFeature::BODY_PROX_NW:         return "BODY_PROX_NW";
+    case InputFeature::BODY_PROX_N:          return "BODY_PROX_N";
+    case InputFeature::BODY_PROX_NE:         return "BODY_PROX_NE";
+    case InputFeature::BODY_PROX_W:          return "BODY_PROX_W";
+    case InputFeature::BODY_PROX_E:          return "BODY_PROX_E";
+    case InputFeature::BODY_PROX_SW:         return "BODY_PROX_SW";
+    case InputFeature::BODY_PROX_S:          return "BODY_PROX_S";
+    case InputFeature::BODY_PROX_SE:         return "BODY_PROX_SE";
+    case InputFeature::WALL_DIST_NW:         return "WALL_DIST_NW";
+    case InputFeature::WALL_DIST_N:          return "WALL_DIST_N";
+    case InputFeature::WALL_DIST_NE:         return "WALL_DIST_NE";
+    case InputFeature::WALL_DIST_W:          return "WALL_DIST_W";
+    case InputFeature::WALL_DIST_E:          return "WALL_DIST_E";
+    case InputFeature::WALL_DIST_SW:         return "WALL_DIST_SW";
+    case InputFeature::WALL_DIST_S:          return "WALL_DIST_S";
+    case InputFeature::WALL_DIST_SE:         return "WALL_DIST_SE";
+    case InputFeature::CELL_AT_INDEX:        return "CELL_AT_INDEX";
+    case InputFeature::FOOD_DISTANCE:        return "FOOD_DISTANCE";
+    case InputFeature::FOOD_ANGLE:           return "FOOD_ANGLE";
+    case InputFeature::MOVES_LEFT:           return "MOVES_LEFT";
+    case InputFeature::SNAKE_LENGTH:         return "SNAKE_LENGTH";
+    case InputFeature::DANGER_STRAIGHT:      return "DANGER_STRAIGHT";
+    case InputFeature::DANGER_RIGHT:         return "DANGER_RIGHT";
+    case InputFeature::DANGER_LEFT:          return "DANGER_LEFT";
+    case InputFeature::DIR_N:                return "DIR_N";
+    case InputFeature::DIR_W:                return "DIR_W";
+    case InputFeature::DIR_E:                return "DIR_E";
+    case InputFeature::DIR_S:                return "DIR_S";
+    case InputFeature::ENEMY_PROX_N:         return "ENEMY_PROX_N";
+    case InputFeature::ENEMY_PROX_W:         return "ENEMY_PROX_W";
+    case InputFeature::ENEMY_PROX_E:         return "ENEMY_PROX_E";
+    case InputFeature::ENEMY_PROX_S:         return "ENEMY_PROX_S";
+    case InputFeature::LAST_OUTPUT_UP:       return "LAST_OUTPUT_UP";
+    case InputFeature::LAST_OUTPUT_DOWN:     return "LAST_OUTPUT_DOWN";
+    case InputFeature::LAST_OUTPUT_RIGHT:    return "LAST_OUTPUT_RIGHT";
+    case InputFeature::LAST_OUTPUT_LEFT:     return "LAST_OUTPUT_LEFT";
+    case InputFeature::CONST_ZERO:           return "CONST_ZERO";
+    case InputFeature::CONST_ONE:            return "CONST_ONE";
+    case InputFeature::LEGACY_WALL_DIST_N:   return "LEGACY_WALL_DIST_N";
+    case InputFeature::LEGACY_WALL_DIST_W:   return "LEGACY_WALL_DIST_W";
+    case InputFeature::LEGACY_WALL_DIST_E:   return "LEGACY_WALL_DIST_E";
+    case InputFeature::LEGACY_WALL_DIST_S:   return "LEGACY_WALL_DIST_S";
+    case InputFeature::LEGACY_FOOD_ANGLE:    return "LEGACY_FOOD_ANGLE";
+    case InputFeature::LEGACY_FOOD_DIST:     return "LEGACY_FOOD_DIST";
+    }
+    return "UNKNOWN";
+}
+
+// ===========================================================================
+//  networkConfigToJson()
+//  Produces a human-readable JSON string describing the full architecture.
+//  Written as  <baseName>_arch.json  alongside snake.csv / apple.seed.
+// ===========================================================================
+QString InputConfig::networkConfigToJson(const NetworkConfig& cfg)
+{
+    QString s;
+    s += "{\n";
+
+    // --- meta ---
+    s += QString("  \"fieldSize\"  : %1,\n").arg(cfg.fieldSize);
+    s += QString("  \"snakeCount\" : %1,\n").arg(cfg.snakeCount);
+    s += QString("  \"topology\"   : \"%1\",\n\n")
+            .arg(QString::fromStdString(buildTopologyString(cfg)));
+
+    // --- input layer ---
+    s += QString("  \"inputLayer\" : {\n");
+    s += QString("    \"neuronCount\" : %1,\n").arg(cfg.inputs.size());
+    s += QString("    \"neurons\" : [\n");
+    for (int i = 0; i < cfg.inputs.size(); ++i) {
+        const InputNeuronConfig& n = cfg.inputs[i];
+        QString enumName = featureEnumName(n.feature);
+        QString desc     = getFeatureInfo(n.feature, cfg.fieldSize).displayName;
+        // escape any special chars in desc (rare, but safe)
+        desc.replace("\\", "\\\\").replace("\"", "\\\"");
+        s += "      { ";
+        s += QString("\"index\": %1, ").arg(i);
+        s += QString("\"feature\": \"%1\", ").arg(enumName);
+        if (n.feature == InputFeature::CELL_AT_INDEX)
+            s += QString("\"param\": %1, ").arg(n.param);
+        s += QString("\"description\": \"%1\"").arg(desc);
+        s += " }";
+        if (i < cfg.inputs.size() - 1) s += ",";
+        s += "\n";
+    }
+    s += "    ]\n";
+    s += "  },\n\n";
+
+    // --- hidden layers ---
+    s += "  \"hiddenLayers\" : [\n";
+    for (int i = 0; i < cfg.hiddenLayers.size(); ++i) {
+        const HiddenLayerConfig& h = cfg.hiddenLayers[i];
+        s += "    { ";
+        s += QString("\"index\": %1, ").arg(i);
+        s += QString("\"neurons\": %1, ").arg(h.neurons);
+        s += QString("\"aggregation\": \"%1\", ").arg(h.aggregation);
+        s += QString("\"activation\": \"%1\"").arg(h.activation);
+        s += " }";
+        if (i < cfg.hiddenLayers.size() - 1) s += ",";
+        s += "\n";
+    }
+    s += "  ],\n\n";
+
+    // --- output layer (always fixed) ---
+    s += "  \"outputLayer\" : {\n";
+    s += "    \"neurons\": 4,\n";
+    s += "    \"aggregation\": \"SUM\",\n";
+    s += "    \"activation\": \"SMAX\",\n";
+    s += "    \"outputs\": [\"Up\", \"Down\", \"Right\", \"Left\"]\n";
+    s += "  }\n";
+
+    s += "}\n";
+    return s;
+}

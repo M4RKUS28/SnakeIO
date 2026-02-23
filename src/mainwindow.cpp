@@ -499,6 +499,14 @@ void MainWindow::on_pushButton_export_clicked() {
   auto d = QFileDialog::getSaveFileName(this, "Export Pfad");
   QFile f(d + "_apple.seed");
   if (!d.isEmpty()) {
+    // Write arch JSON
+    QFile fArch(d + "_arch.json");
+    bool archOk = fArch.open(QFile::ReadWrite | QFile::Truncate) &&
+                  fArch.write(InputConfig::networkConfigToJson(
+                                  gameViewWithGame->game->cfg)
+                                  .toUtf8()) != -1;
+    fArch.close();
+
     if (gameViewWithGame->game->population
             ->netAt(gameViewWithGame->game->getBest())
             ->saveTo(d.toStdString() + "_snake.csv") &&
@@ -507,7 +515,9 @@ void MainWindow::on_pushButton_export_clicked() {
             QString::number(this->gameViewWithGame->game->gamefield->getSeed())
                 .toStdString()
                 .c_str()) != -1) {
-      ui->statusbar->showMessage("Erfoglreich gespeichert!", 2000);
+      ui->statusbar->showMessage(
+          archOk ? "Erfoglreich gespeichert!" : "Gespeichert (arch.json fehlgeschlagen)!",
+          2000);
       qDebug() << "Seed: "
                << this->gameViewWithGame->game->gamefield->getSeed();
     } else {
