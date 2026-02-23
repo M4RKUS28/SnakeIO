@@ -40,7 +40,7 @@ private slots:
 
     void on_pushButton_clicked();
 
-    void on_doubleSpinBox_speed_editingFinished();
+    void on_sliderSpeed_valueChanged(int value);
 
     void on_radioButtonrays_clicked(bool checked);
     void on_radioButtonHiddenApple_clicked(bool checked);

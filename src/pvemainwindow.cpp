@@ -121,7 +121,7 @@ void PvEMainWindow::buildUi()
     startPauseBtn  = new QPushButton("▶  Start");
     resetBtn       = new QPushButton("↺  Reset");
     homeBtn        = new QPushButton("🏠  Home");
-    hiddenAppleChk = new QCheckBox("Apfel verstecken");
+    hiddenAppleChk = new Switch("Apfel verstecken");
     QFont bf = startPauseBtn->font(); bf.setPointSize(12); bf.setBold(true);
     startPauseBtn->setFont(bf);
     resetBtn->setFont(bf);
@@ -172,7 +172,7 @@ void PvEMainWindow::buildUi()
     connect(startPauseBtn,  &QPushButton::clicked,   this, &PvEMainWindow::onStartPause);
     connect(resetBtn,       &QPushButton::clicked,   this, &PvEMainWindow::onReset);
     connect(homeBtn,        &QPushButton::clicked,   this, &PvEMainWindow::onHome);
-    connect(hiddenAppleChk, &QCheckBox::toggled,     this, &PvEMainWindow::onHiddenAppleToggled);
+    connect(hiddenAppleChk, &Switch::toggled,      this, &PvEMainWindow::onHiddenAppleToggled);
 
     // Score updates
     connect(aiView,     &GraphicsView::textUpdateNeeded, this, &PvEMainWindow::updateScores);

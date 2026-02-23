@@ -3,7 +3,7 @@
 
 #include "graphicsview.h"
 #include "startdialog.h"
-#include <QCheckBox>
+#include "switch.h"
 #include <QMainWindow>
 #include <QLabel>
 #include <QPushButton>
@@ -68,7 +68,7 @@ private:
     QPushButton* startPauseBtn     = nullptr;
     QPushButton* resetBtn          = nullptr;
     QPushButton* homeBtn           = nullptr;
-    QCheckBox*   hiddenAppleChk    = nullptr;
+    Switch*      hiddenAppleChk    = nullptr;
 
     bool paused = false;
     double playerDeadRampSpeed = 800.0; // starts at player's normal speed

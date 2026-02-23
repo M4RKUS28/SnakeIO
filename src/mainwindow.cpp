@@ -3,6 +3,16 @@
 #include "config/inputconfig.h"
 #include <QFile>
 #include <QTemporaryFile>
+#include <cmath>
+
+// Logarithmic mapping: slider 1–1000  →  speed 0.1–100 000 000 %
+// speed = 0.1 * 10^( value / 1000.0 * 9.0 )
+static double sliderToSpeed(int value) {
+    return 0.1 * std::pow(10.0, value / 1000.0 * 9.0);
+}
+static int speedToSlider(double speed) {
+    return qBound(1, static_cast<int>(std::round(std::log10(speed / 0.1) / 9.0 * 1000.0)), 1000);
+}
 
 MainWindow::MainWindow(StartSettings s, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -10,13 +20,16 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
 
   gameViewWithGame =
       new GraphicsView(s, this, this->ui->comboBoxMutAlgorithm,
-                       ui->doubleSpinBox_speed->value());
+                       sliderToSpeed(ui->sliderSpeed->value()));
   gameViewWithGame->setSizePolicy(QSizePolicy::Policy::Expanding,
                                   QSizePolicy::Policy::Expanding);
   ui->widget->layout()->addWidget(gameViewWithGame);
   ui->splitter->setSizes(
       QList<int>{0, this->width() - ui->splitter->widget(2)->width(),
                  ui->splitter->widget(2)->width()});
+
+  // update speed label immediately
+  ui->labelSpeedVal->setText(QString("%1 %").arg(sliderToSpeed(ui->sliderSpeed->value()), 0, 'f', 0));
 
   ui->doubleSpinBoxMutRange->setValue(gameViewWithGame->game->getMut_range());
 
@@ -171,7 +184,7 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
 
     // --- Hide everything in the right scroll panel except the 4 keep-items ---
     // Keep: pushButtonStart, pushButton (stop), radioButtonShowGrid,
-    //       radioButtonrays, doubleSpinBox_speed  (+ label_8 "Speed").
+    //       radioButtonrays, sliderSpeed  (+ label_8 + labelSpeedVal).
     const QList<QWidget*> toHide = {
         ui->line,   ui->line_2, ui->line_4, ui->line_5, ui->label_14, ui->label_max_moves, ui->score, ui->highscore, ui->laength, ui->moves_left,  diaUber->styleHandler()->getCombobox(), ui->line_8,
         ui->line_6, ui->line_7,
@@ -194,12 +207,13 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
     ui->splitter->setSizes(QList<int>{1, 1, 1});
 
     // --- Set slow demo speed (≈ 8 steps/sec: 100/speed_game seconds per step) ---
-    ui->doubleSpinBox_speed->setValue(800.0);
+    ui->sliderSpeed->setValue(speedToSlider(800.0));  // ~800%
+    ui->labelSpeedVal->setText("800 %");
     for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
         gameViewWithGame->game->snakes[i]->setSpeed(800.0);
 
     //enale update viewnet
-    ui->radioBUpdateViewNet->toggle();//true);
+    ui->radioBUpdateViewNet->setChecked(true);//true);
 
     // --- Auto-import the trained model ---
     if (!QFile(":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv").exists()) {
@@ -306,7 +320,7 @@ void MainWindow::textUpdate() {
       ui->label_max_moves->setText(
           QString::number(gameViewWithGame->currentSnake()->getMaxMoves()));
 
-  if (viewNet && ui->doubleSpinBox_speed->value() < 10001.0) {
+  if (viewNet && sliderToSpeed(ui->sliderSpeed->value()) < 10001.0) {
     if (ui->radioBUpdateViewNet->isChecked()) {
       viewNet->updateInputLabels(true, 30);
       viewNet->updateOutputLabels(true, true, 30);
@@ -335,11 +349,11 @@ void MainWindow::on_pushButton_clicked() {
   // ui->pushButton->setDisabled(false);
 }
 
-void MainWindow::on_doubleSpinBox_speed_editingFinished() {
-  for (int i = 0; i < gameViewWithGame->getAi_count(); ++i) {
-    gameViewWithGame->game->snakes[i]->setSpeed(
-        ui->doubleSpinBox_speed->value());
-  }
+void MainWindow::on_sliderSpeed_valueChanged(int value) {
+  const double speed = sliderToSpeed(value);
+  ui->labelSpeedVal->setText(QString("%1 %").arg(speed, 0, 'f', 0));
+  for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
+    gameViewWithGame->game->snakes[i]->setSpeed(speed);
 }
 
 void MainWindow::timerEvent(QTimerEvent *) { QApplication::processEvents(); }

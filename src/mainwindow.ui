@@ -203,7 +203,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>326</width>
+          <width>351</width>
           <height>757</height>
          </rect>
         </property>
@@ -338,23 +338,31 @@
             </widget>
            </item>
            <item row="21" column="1">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_speed">
-             <property name="suffix">
-              <string> %</string>
-             </property>
-             <property name="decimals">
-              <number>1</number>
-             </property>
-             <property name="minimum">
-              <double>0.100000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>99999999.000000000000000</double>
-             </property>
-             <property name="value">
-              <double>99999999.000000000000000</double>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout">
+             <item>
+              <widget class="QSlider" name="sliderSpeed">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>1000</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelSpeedVal">
+               <property name="text">
+                <string>99999999 %</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item row="29" column="0" colspan="2">
             <widget class="Line" name="line_8">
@@ -370,23 +378,17 @@
              </property>
             </widget>
            </item>
-           <item row="22" column="0">
-            <widget class="QRadioButton" name="radioButtonrays">
+           <item row="22" column="0" colspan="2">
+            <widget class="Switch" name="radioButtonrays">
              <property name="text">
               <string>Show Input Rays</string>
              </property>
-             <property name="autoExclusive">
-              <bool>false</bool>
-             </property>
             </widget>
            </item>
-           <item row="23" column="0">
-            <widget class="QRadioButton" name="radioButtonHiddenApple">
+           <item row="23" column="0" colspan="2">
+            <widget class="Switch" name="radioButtonHiddenApple">
              <property name="text">
               <string>Hide Apple (off-ray)</string>
-             </property>
-             <property name="autoExclusive">
-              <bool>false</bool>
              </property>
             </widget>
            </item>
@@ -410,6 +412,7 @@
             <widget class="QLabel" name="highscore">
              <property name="font">
               <font>
+               <pointsize>12</pointsize>
                <bold>true</bold>
               </font>
              </property>
@@ -565,14 +568,11 @@
             </layout>
            </item>
            <item row="24" column="0" colspan="2">
-            <widget class="QRadioButton" name="radioButtonreconnect">
+            <widget class="Switch" name="radioButtonreconnect">
              <property name="text">
               <string>Auto-Switch to next living snake</string>
              </property>
              <property name="checked">
-              <bool>true</bool>
-             </property>
-             <property name="autoExclusive">
               <bool>false</bool>
              </property>
             </widget>
@@ -603,34 +603,28 @@
             </layout>
            </item>
            <item row="25" column="0" colspan="2">
-            <widget class="QRadioButton" name="radioBUpdateViewNet">
+            <widget class="Switch" name="radioBUpdateViewNet">
              <property name="text">
               <string>UpdateViewNetValues</string>
              </property>
              <property name="checked">
               <bool>false</bool>
              </property>
-             <property name="autoExclusive">
-              <bool>false</bool>
-             </property>
             </widget>
            </item>
-           <item row="23" column="0" colspan="2">
-            <widget class="QCheckBox" name="checkBoxresetapples">
+           <item row="34" column="0" colspan="2">
+            <widget class="Switch" name="checkBoxresetapples">
              <property name="text">
               <string>ResetApplePos</string>
              </property>
             </widget>
            </item>
-           <item row="22" column="1">
-            <widget class="QRadioButton" name="radioButtonShowGrid">
+           <item row="33" column="0" colspan="2">
+            <widget class="Switch" name="radioButtonShowGrid">
              <property name="text">
               <string>Show Grid</string>
              </property>
              <property name="checked">
-              <bool>true</bool>
-             </property>
-             <property name="autoExclusive">
               <bool>false</bool>
              </property>
             </widget>
@@ -676,11 +670,15 @@
             <widget class="QLabel" name="label_6">
              <property name="font">
               <font>
+               <pointsize>12</pointsize>
                <bold>true</bold>
               </font>
              </property>
              <property name="text">
               <string>Highscore:</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
              </property>
             </widget>
            </item>
@@ -746,6 +744,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Switch</class>
+   <extends>QAbstractButton</extends>
+   <header>switch.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../resources.qrc"/>
  </resources>

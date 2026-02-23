@@ -13,6 +13,7 @@
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QScrollArea>
 #include <QSplitter>
 #include <QFrame>
@@ -137,7 +138,7 @@ void StartDialog::setupTrainingPage()
 
     snakeCountSpinBox = new QSpinBox(p);
     snakeCountSpinBox->setRange(1, 9999);
-    snakeCountSpinBox->setValue(21);
+    snakeCountSpinBox->setValue(2000);
     formLayout->addRow("Snake Count (AIs):", snakeCountSpinBox);
 
     mainLayout->addLayout(formLayout);
@@ -486,6 +487,11 @@ void StartDialog::onAddNeuron()
 
 void StartDialog::onRemoveNeuron()
 {
+    if (inputTable->rowCount() <= 1) {
+        QMessageBox::warning(this, "Eingabe-Fehler",
+            "Der Input-Layer muss mindestens 1 Neuron enthalten.");
+        return;
+    }
     const int row = inputTable->currentRow();
     if (row >= 0)
         inputTable->removeRow(row);
@@ -516,6 +522,11 @@ void StartDialog::updateInputCountLabel()
 
 void StartDialog::onTrainingStart()
 {
+    if (inputTable && inputTable->rowCount() < 1) {
+        QMessageBox::warning(this, "Eingabe-Fehler",
+            "Der Input-Layer muss mindestens 1 Neuron enthalten.");
+        return;
+    }
     startSettings.networkConfig = readNetworkConfigFromUI();
     startSettings.ai_count      = startSettings.networkConfig.snakeCount;
     this->accept();
