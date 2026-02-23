@@ -573,7 +573,7 @@
               <string>Auto-Switch to next living snake</string>
              </property>
              <property name="checked">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -618,7 +618,7 @@
               <string>Show Grid</string>
              </property>
              <property name="checked">
-              <bool>false</bool>
+              <bool>true</bool>
              </property>
             </widget>
            </item>
