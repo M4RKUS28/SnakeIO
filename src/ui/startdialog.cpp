@@ -166,6 +166,7 @@ void StartDialog::setupTrainingPage()
 
     // ---- Splitter: Input | Hidden | Output ----------------------------
     QSplitter* splitter = new QSplitter(Qt::Vertical, p);
+    splitter->setStyleSheet("QSplitter::handle:vertical {\n    background-color: #87CEFA;\n    height: 2px;                /* Dicke */\n    border-radius: 4px;\n    margin-right:  500px;         /* Abstand oben */\n    margin-left: 500px;      /* Abstand unten */\n    border-radius: 2px;          /* abgerundete Ecken */\n}");
     splitter->setChildrenCollapsible(false);
 
     // -- Pane 1: Input neurons --
@@ -577,7 +578,7 @@ void StartDialog::on_pushButton_8_clicked()   // Exit
 void StartDialog::onDemoClicked()   // Demo Mode
 {
     startSettings.appmode       = StartSettings::APPMODE::DEMO;
-    startSettings.networkConfig = NetworkConfig::makeDemo(21, 1);  // 1 snake for demo
+    startSettings.networkConfig = NetworkConfig::makeDemo(20, 1);  // demo model trained on 20×20 field
     startSettings.ai_count      = 1;
     this->accept();
 }

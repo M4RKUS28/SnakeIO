@@ -10,70 +10,66 @@ GraphicsView::GraphicsView(StartSettings s, QWidget* parent, QComboBox* mutAlgo,
     scene = new QGraphicsScene(this);
     this->setScene(scene);
 
-    const int groese  = 20;                            // pixel size per cell
-    const int anzahl  = s.networkConfig.fieldSize;     // field side-length (cells)
-    ai_count          = s.networkConfig.snakeCount;
+    constexpr int cellPx = 20;   // pixels per grid cell
+    constexpr int margin = 20;   // border offset in pixels
+    const int fieldCells = s.networkConfig.fieldSize;
+    ai_count             = s.networkConfig.snakeCount;
 
-    const int abstand     = 20;
-    const int pixel_count = groese * anzahl + abstand * 2;
+    const int totalPx = cellPx * fieldCells + margin * 2;
 
-    std::cout << "Field: " << anzahl << "  AIs: " << ai_count << std::endl;
+    qDebug("GraphicsView: field=%d cells, %d AIs", fieldCells, ai_count);
 
-    scene->setSceneRect(0, 0, pixel_count, pixel_count);
-    border = scene->addRect(QRect(abstand, abstand, groese * anzahl, groese * anzahl));
+    scene->setSceneRect(0, 0, totalPx, totalPx);
+    border = scene->addRect(QRect(margin, margin, cellPx * fieldCells, cellPx * fieldCells));
 
     // Grid lines
     grid = new QGraphicsItemGroup();
-    for (int x = abstand; x <= groese * anzahl + abstand; x += groese) {
-        QGraphicsLineItem* a;
-        grid->addToGroup((a = new QGraphicsLineItem(QLine(x, abstand, x, groese * anzahl + abstand))));
-        a->setPen(QPen(QBrush(QColor::fromRgb(160, 160, 160)), 1));
-        grid->addToGroup((a = new QGraphicsLineItem(QLine(abstand, x, groese * anzahl + abstand, x))));
-        a->setPen(QPen(QBrush(QColor::fromRgb(160, 160, 160)), 1));
+    for (int x = margin; x <= cellPx * fieldCells + margin; x += cellPx) {
+        QGraphicsLineItem* line;
+        grid->addToGroup((line = new QGraphicsLineItem(
+            QLine(x, margin, x, cellPx * fieldCells + margin))));
+        line->setPen(QPen(QColor(160, 160, 160), 1));
+        grid->addToGroup((line = new QGraphicsLineItem(
+            QLine(margin, x, cellPx * fieldCells + margin, x))));
+        line->setPen(QPen(QColor(160, 160, 160), 1));
     }
     scene->addItem(grid);
 
-    // Create the Game with the full NetworkConfig
+    // Create the Game with the full NetworkConfig.
     game = new Game(s.networkConfig, this, speed_game, mutAlgo, isPvE);
     connect(game, SIGNAL(bestSnakeChanged(int,int,int)), this, SLOT(setNewFokusToBest(int,int,int)));
 
-    game->snakes[connected_to]->setFokus(true);
+    game->snakeAt(connected_to)->setFokus(true);
 
+    // ---- Snake rendering items ----
+    snakeItem = new QGraphicsPathItem();
+    scene->addItem(snakeItem);
+    snakeItem->setPen(QPen(QColor(255, 0, 0), 8));
 
-
-
-    //Init Game ui's
-    snake = new QGraphicsPathItem();
-    scene->addItem(snake);
-    snake->setPen(QPen(QBrush(QColor::fromRgb(255, 0, 0)), 8 ));
-
-    apple = new QGraphicsEllipseItem();
-    scene->addItem(apple);
-    apple->setRect(-3 + 10, -3 + 10, 8, 8);
-    apple->setPen(QPen(QBrush(Qt::darkGreen), 8));
+    appleItem = new QGraphicsEllipseItem();
+    scene->addItem(appleItem);
+    appleItem->setRect(-3 + 10, -3 + 10, 8, 8);
+    appleItem->setPen(QPen(Qt::darkGreen, 8));
 
     rays = new QGraphicsPathItem();
     scene->addItem(rays);
     rays->setPen(QPen(Qt::black, 1));
 
-    head = new QGraphicsPathItem();
-    scene->addItem(head);
-    head->setPen(QPen(Qt::black, 3));
+    headItem = new QGraphicsPathItem();
+    scene->addItem(headItem);
+    headItem->setPen(QPen(Qt::black, 3));
 
+    snakeEnemy = new QGraphicsPathItem();
+    scene->addItem(snakeEnemy);
+    snakeEnemy->setPen(QPen(QColor(0, 0, 255), 8));
+    if (!isPvE)
+        snakeEnemy->hide();
 
-    snake_enemy = new QGraphicsPathItem();
-    scene->addItem(snake_enemy);
-    snake_enemy->setPen(QPen(QBrush(QColor::fromRgb(0, 0, 255)), 8 ));
-    if(!isPvE)
-        snake_enemy->hide();
-
-    head_enemy = new QGraphicsPathItem();
-    head_enemy->setPen(QPen(Qt::black, 3));
-    scene->addItem(head_enemy);
-    if(!isPvE)
-        head_enemy->hide();
-
-
+    headEnemy = new QGraphicsPathItem();
+    headEnemy->setPen(QPen(Qt::black, 3));
+    scene->addItem(headEnemy);
+    if (!isPvE)
+        headEnemy->hide();
 }
 
 
@@ -83,14 +79,14 @@ GraphicsView::~GraphicsView()
 }
 
 
-Snake *GraphicsView::currentSnake()
+Snake* GraphicsView::currentSnake() const
 {
-    return game->snakes[connected_to];
+    return game->snakeAt(connected_to);
 }
 
-Net *GraphicsView::currentNet()
+Net* GraphicsView::currentNet() const
 {
-    return game->population->netAt(connected_to);
+    return game->getPopulation()->netAt(connected_to);
 }
 
 int GraphicsView::getConnected_to() const
@@ -98,9 +94,9 @@ int GraphicsView::getConnected_to() const
     return connected_to;
 }
 
-void GraphicsView::setShowRays(bool newShowRays)
+void GraphicsView::setShowRays(bool show)
 {
-    showRays = newShowRays;
+    showRays = show;
 }
 
 void GraphicsView::setHiddenApple(bool enabled)
@@ -112,20 +108,25 @@ void GraphicsView::setHiddenApple(bool enabled)
 void GraphicsView::updateAppleVisibility()
 {
     if (!hiddenApple) {
-        apple->show();
+        appleItem->show();
         return;
     }
-    // Food is on one of the 8 compass/diagonal rays from head when:
-    //   same column (N/S), same row (E/W), or same-distance diagonal (NE/NW/SE/SW)
+    // The apple lies on one of the 8 compass / diagonal rays from the head when:
+    //   same column (N/S), same row (E/W), or equal-distance diagonal (NE/NW/SE/SW).
     const int dx = lastFoodGrid.x() - lastHeadGrid.x();
     const int dy = lastFoodGrid.y() - lastHeadGrid.y();
     const bool onRay = (dx == 0) || (dy == 0) || (qAbs(dx) == qAbs(dy));
-    if (onRay) apple->show(); else apple->hide();
+    if (onRay) appleItem->show(); else appleItem->hide();
 }
 
-void GraphicsView::setRreconnect(bool newRreconnect)
+void GraphicsView::setRreconnect(bool enabled)
 {
-    rreconnect = newRreconnect;
+    rreconnect = enabled;
+}
+
+void GraphicsView::setGridVisible(bool visible)
+{
+    if (visible) grid->show(); else grid->hide();
 }
 
 int GraphicsView::getAi_count() const
@@ -135,168 +136,138 @@ int GraphicsView::getAi_count() const
 
 void GraphicsView::connectToSnake(int id)
 {
-    // QMutexLocker m(&reconnectMutex);
+    disconnect(currentSnake(), SIGNAL(posChanged(QPolygon, int)),    this, SLOT(snake_moved(QPolygon, int)));
+    disconnect(currentSnake(), SIGNAL(foodPosChanged(QPoint,int)),   this, SLOT(apple_pos_changed(QPoint,int)));
+    disconnect(currentSnake(), SIGNAL(died(int)),                    this, SLOT(reconnect(int)));
+    game->snakeAt(connected_to)->setFokus(false);
 
-    disconnect(currentSnake(), SIGNAL(posChanged(QPolygon, int)), this, SLOT(snake_moved(QPolygon, int)));
-    disconnect(currentSnake(), SIGNAL(foodPosChanged(QPoint,int)), this, SLOT(apple_pos_changed(QPoint,int)));
-    disconnect(currentSnake(), SIGNAL(died(int)), this, SLOT(reconnect(int)));
-    game->snakes[connected_to]->setFokus(false);
+    connect(game->snakeAt(id), SIGNAL(posChanged(QPolygon,int)),    this, SLOT(snake_moved(QPolygon,int)));
+    connect(game->snakeAt(id), SIGNAL(foodPosChanged(QPoint,int)),  this, SLOT(apple_pos_changed(QPoint,int)));
 
+    if (rreconnect)
+        connect(game->snakeAt(id), SIGNAL(died(int)), this, SLOT(reconnect(int)));
 
-    connect(game->snakes[id], SIGNAL(posChanged(QPolygon,int)), this, SLOT(snake_moved(QPolygon,int)));
-    connect(game->snakes[id], SIGNAL(foodPosChanged(QPoint,int)), this, SLOT(apple_pos_changed(QPoint,int)));
-
-    if(/*!isPvE &&*/ rreconnect) {
-        // if(rreconnect && game->snakes[id]->getLebt_noch())
-            connect(game->snakes[id], SIGNAL(died(int)), this, SLOT(reconnect(int)));
-    }
-
-    connected_to = id; // speichere neue connection!
-    game->snakes[connected_to]->setFokus(true);
+    connected_to = id;
+    game->snakeAt(connected_to)->setFokus(true);
     emit fokus_changed(id);
 
-    apple->setPos(currentSnake()->getCurrentFood() * 20);
+    appleItem->setPos(currentSnake()->getCurrentFood() * 20);
     lastFoodGrid = currentSnake()->getCurrentFood();
 
-    if(/*!isPvE &&*/ rreconnect && !game->snakes[id]->getLebt_noch()) {
+    if (rreconnect && !game->snakeAt(id)->getLebt_noch())
         reconnect(-1);
-    }
 }
 
 void GraphicsView::snake_moved(QPolygon newPos, int id, bool isFirstCall)
 {
-    // Save head grid position BEFORE the pixel transform
+    // Record head grid position before transforming to pixel coords.
     if (isFirstCall)
         lastHeadGrid = newPos.at(0);
 
-    // qDebug() << "snake_moved: " << isFirstCall << " --> " << newPos;
-    for(auto & e : newPos) {
-        e *= 20;
-        e += QPoint(10, 10);
+    // Transform grid coords to pixel coords (cell centre).
+    for (auto& p : newPos) {
+        p *= 20;
+        p += QPoint(10, 10);
     }
 
-    QGraphicsPathItem * snake = (isFirstCall) ? this->snake : this->snake_enemy;
-    QGraphicsPathItem * head = (isFirstCall) ? this->head : this->head_enemy;
-
+    // Choose the right path items depending on whether this is the
+    // focused snake or its enemy.
+    QGraphicsPathItem* bodyItem = isFirstCall ? snakeItem  : snakeEnemy;
+    QGraphicsPathItem* headPt   = isFirstCall ? headItem   : headEnemy;
 
     QPainterPath p;
     p.addPolygon(newPos);
-    // snake->setPen(QPen(QBrush(QColor::fromRgb(( 1.0 - (double)id / (double)ai_count) * 100.0 + 155, 0, 0)), 8 ));
-    snake->setPath(p);
+    bodyItem->setPath(p);
 
     QPainterPath p2;
     p2.addEllipse(newPos.front(), 3, 3);
-    head->setPath(p2);
+    headPt->setPath(p2);
 
-
-    if(showRays && isFirstCall) {
-        QPainterPath path;
-        QPointF center = newPos.front(); // Der Punkt, in dem sich die Strahlen schneiden
-        int numLines = 8; // Anzahl der Linien
-        for (int i = 0; i < numLines; ++i) {
-            double angle = 2 * M_PI * i / numLines;
-
-            double endX = center.x() + 0.5 * 1800 * qCos(angle);
-            double endY = center.y() + 0.5 * 1800 * qSin(angle);
-
-            path.moveTo(center);
-            path.lineTo(endX, endY);
+    // Draw visibility rays from head.
+    if (showRays && isFirstCall) {
+        QPainterPath rayPath;
+        const QPointF centre = newPos.front();
+        for (int i = 0; i < 8; ++i) {
+            const double angle = 2.0 * M_PI * i / 8.0;
+            rayPath.moveTo(centre);
+            rayPath.lineTo(centre.x() + 900.0 * qCos(angle),
+                           centre.y() + 900.0 * qSin(angle));
         }
-        rays->setPath(path);
-        if(!rays->isVisible())
-            rays->show();
-    } else if(rays->isVisible())
+        rays->setPath(rayPath);
+        if (!rays->isVisible()) rays->show();
+    } else if (rays->isVisible()) {
         rays->hide();
+    }
 
-    //update stats, if connected to snake
-    if(id == connected_to) {
+    // Refresh status text and apple visibility for the connected snake.
+    if (id == connected_to) {
         updateAppleVisibility();
         emit textUpdateNeeded();
     }
 
-
-    if(isPvE && isFirstCall && game->snakes[id]->getEnemy()) {
-        if(game->snakes[id]->getEnemy()->getLebt_noch()) {
-            snake_enemy->show();
-            head_enemy->show();
-        } else {
-            snake_enemy->hide();
-            head_enemy->hide();
-        }
-        snake_moved(game->snakes[id]->getEnemyPolygon(),game->snakes[id]->getEnemy()->getNum_id(), false );
+    // In PvE mode, also draw the enemy snake on the same field.
+    if (isPvE && isFirstCall && game->snakeAt(id)->getEnemy()) {
+        const bool enemyAlive = game->snakeAt(id)->getEnemy()->getLebt_noch();
+        snakeEnemy->setVisible(enemyAlive);
+        headEnemy->setVisible(enemyAlive);
+        if (enemyAlive)
+            snake_moved(game->snakeAt(id)->getEnemyPolygon(),
+                        game->snakeAt(id)->getEnemy()->getNum_id(), false);
     }
 }
 
 void GraphicsView::apple_pos_changed(QPoint newPos, int id)
 {
-    if(id == connected_to) {
-        lastFoodGrid = newPos;  // newPos is grid coords
-        apple->setPos(newPos * 20);
+    if (id == connected_to) {
+        lastFoodGrid = newPos;  // grid coords
+        appleItem->setPos(newPos * 20);
         updateAppleVisibility();
-    } else
-        std::cerr << "wrong id" << std::endl;
+    } else {
+        qWarning("GraphicsView::apple_pos_changed: id %d does not match connected_to %d", id, connected_to);
+    }
 }
 
 void GraphicsView::reconnect(int)
 {
-    // QMutexLocker m(&reconnectMutex);
+    if (currentSnake()->getLebt_noch())
+        return;  // still alive — spurious signal
 
-    size_t best = 0;
+    if (isPvE) {
+        Snake* enemy = currentSnake()->getEnemy();
+        if (enemy && enemy->getLebt_noch())
+            enemy->reset();
+    }
+
+    // Find the highest-scoring snake that is still alive.
+    int    best       = -1;
     size_t best_score = 0;
-    bool one_is_living = false;
-
-    if(this->currentSnake()->getLebt_noch()) {
-        // std::cout << "ERROR: Connected Snake died, but currentSnake is still living!" << std::endl;
-        return;
-    }
-
-
-    if(isPvE) {
-        if(this->currentSnake()->getEnemy()->getLebt_noch()) {
-            this->currentSnake()->getEnemy()->reset();
-        }
-
-    }
-
     for (int i = 0; i < ai_count; ++i) {
-        if(this->game->snakes[i]->getLebt_noch()) {
-            if(this->game->snakes[i]->getScore() > best_score) {
-                best_score = this->game->snakes[i]->getScore();
-                best = i;
-                one_is_living = true;
-            }
+        if (game->snakeAt(i)->getLebt_noch() &&
+            game->snakeAt(i)->getScore() > best_score) {
+            best_score = game->snakeAt(i)->getScore();
+            best       = i;
         }
     }
 
-    if(one_is_living) {
+    if (best >= 0)
         connectToSnake(best);
-    } else {
-        // std::cout << "No living sake to connect to!" << std::endl;
-    }
-
-
 }
 
-void GraphicsView::setNewFokusToBest(int id,int,int)
+void GraphicsView::setNewFokusToBest(int id, int, int)
 {
     connectToSnake(id);
 }
 
-void GraphicsView::keyPressEvent(QKeyEvent *event)
+void GraphicsView::keyPressEvent(QKeyEvent* event)
 {
+    // Route arrow keys to the snake currently connected (player mode).
+    Snake* s = game->snakeAt(connected_to);
     switch (event->key()) {
-    case Qt::Key_Up:
-        game->snakes[0]->richtungAendern(QPoint(0, -1));
-        break;
-    case Qt::Key_Down:
-        game->snakes[0]->richtungAendern(QPoint(0, 1));
-        break;
-    case Qt::Key_Right:
-        game->snakes[0]->richtungAendern(QPoint(1, 0));
-        break;
-    case Qt::Key_Left:
-        game->snakes[0]->richtungAendern(QPoint(-1, 0));
-        break;
+    case Qt::Key_Up:    s->richtungAendern(QPoint( 0, -1)); break;
+    case Qt::Key_Down:  s->richtungAendern(QPoint( 0,  1)); break;
+    case Qt::Key_Right: s->richtungAendern(QPoint( 1,  0)); break;
+    case Qt::Key_Left:  s->richtungAendern(QPoint(-1,  0)); break;
+    default: QGraphicsView::keyPressEvent(event); break;
     }
 }
 

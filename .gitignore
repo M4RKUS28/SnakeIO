@@ -68,3 +68,5 @@ release*/
 installer/S*Installer.exe
 net_save.csv
 current_best_ai-bak.csv
+
+SnakeIO_resource.rc

@@ -1,22 +1,21 @@
 #include "gamefield.h"
 #include <QDateTime>
-
-
-
 #include <QDebug>
 
 GameField::GameField(int size)
-    : randomGenerator( (this->seed = QDateTime::currentMSecsSinceEpoch()) ), size(size)
+    : seed(static_cast<size_t>(QDateTime::currentMSecsSinceEpoch())),
+      randomGenerator(seed),
+      size(size)
 {
-
 }
 
 QPoint GameField::getApplePos(int num)
 {
-    QMutexLocker m_lock(&mutex);
-    while(applePos.length() <= num) {
-        applePos += QPoint(randomGenerator.bounded(1, size), randomGenerator.bounded(1, size));
-        // qDebug() << "New Apple at: [ " << applePos.length()-1 << "]: " << applePos.back();
+    QMutexLocker lock(&mutex);
+    // Lazily generate apple positions on demand.
+    while (applePos.size() <= num) {
+        applePos += QPoint(randomGenerator.bounded(1, size),
+                          randomGenerator.bounded(1, size));
     }
     return applePos.at(num);
 }
@@ -27,20 +26,20 @@ void GameField::setSeed(size_t seed)
     this->reset(seed);
 }
 
-size_t GameField::getSeed()
-{
-    return seed;
-}
-
 void GameField::reset(size_t seed)
 {
     applePos.clear();
-    randomGenerator.seed( (seed != 0) ? (this->seed = seed) : (this->seed = QDateTime::currentMSecsSinceEpoch()) );
+    if (seed != 0) {
+        this->seed = seed;
+    } else {
+        this->seed = static_cast<size_t>(QDateTime::currentMSecsSinceEpoch());
+    }
+    randomGenerator.seed(this->seed);
 }
 
 void GameField::popBack()
 {
-    if(applePos.length())
+    if (!applePos.isEmpty())
         applePos.pop_back();
 }
 
@@ -52,22 +51,14 @@ void GameField::removeAppleAt(int index)
 
 void GameField::addCornerApples()
 {
-    QPoint m = QPoint(size / 2, size / 2);
-    applePos += QPoint(1, 1);
-    applePos += m;
-    applePos += QPoint(1, size);
-    applePos += m;
-    applePos += QPoint(size, size);
-    applePos += m;
-    applePos += QPoint(size, 1);
-    applePos += m;
+    const QPoint centre(size / 2, size / 2);
+    // Four corners, each followed by the centre so the snake always has
+    // a reachable next apple.
+    applePos += QPoint(1,    1);    applePos += centre;
+    applePos += QPoint(1,    size); applePos += centre;
+    applePos += QPoint(size, size); applePos += centre;
+    applePos += QPoint(size, 1);    applePos += centre;
 }
-
-int GameField::getSize() const
-{
-    return size;
-}
-
 
 
 

@@ -36,13 +36,13 @@ static bool loadNetFromResource(GraphicsView* gv, const QString& resPath)
     QString tmpPath = tmp.fileName();
     tmp.close();
 
-    bool ok = gv->game->population
+    bool ok = gv->game->getPopulation()
                   ->netAt(gv->game->getBest())
                   ->loadFrom(tmpPath.toStdString());
     QFile::remove(tmpPath);
 
-    // Randomize apple seed so AI doesn't play on a fixed known board
-    gv->game->gamefield->setSeed(
+    // Randomize apple seed so AI doesn't play on a fixed known board each game.
+    gv->game->getGamefield()->setSeed(
         static_cast<size_t>(QRandomGenerator::global()->generate64()));
 
     return ok;
@@ -179,8 +179,8 @@ void PvEMainWindow::buildUi()
     connect(playerView, &GraphicsView::textUpdateNeeded, this, &PvEMainWindow::updateScores);
 
     // Death signals: initial connection (re-connected in onStartPause before each game)
-    connect(aiView->game->snakes[0],     &Snake::died, this, &PvEMainWindow::onAiDied);
-    connect(playerView->game->snakes[0], &Snake::died, this, &PvEMainWindow::onPlayerDied);
+    connect(aiView->game->snakeAt(0),     &Snake::died, this, &PvEMainWindow::onAiDied);
+    connect(playerView->game->snakeAt(0), &Snake::died, this, &PvEMainWindow::onPlayerDied);
 
     setState(State::IDLE);
 }
@@ -229,23 +229,21 @@ void PvEMainWindow::showResult(const QString& msg)
 void PvEMainWindow::onStartPause()
 {
     if (state == State::IDLE || state == State::GAME_OVER) {
-        // stop & re-connect death signals before starting
         aiView->game->stop_and_reset();
         playerView->game->stop_and_reset();
 
-        disconnect(aiView->game->snakes[0],     &Snake::died, this, nullptr);
-        disconnect(playerView->game->snakes[0], &Snake::died, this, nullptr);
-        connect(aiView->game->snakes[0],     &Snake::died, this, &PvEMainWindow::onAiDied,     Qt::QueuedConnection);
-        connect(playerView->game->snakes[0], &Snake::died, this, &PvEMainWindow::onPlayerDied, Qt::QueuedConnection);
+        disconnect(aiView->game->snakeAt(0),     &Snake::died, this, nullptr);
+        disconnect(playerView->game->snakeAt(0), &Snake::died, this, nullptr);
+        connect(aiView->game->snakeAt(0),     &Snake::died, this, &PvEMainWindow::onAiDied,     Qt::QueuedConnection);
+        connect(playerView->game->snakeAt(0), &Snake::died, this, &PvEMainWindow::onPlayerDied, Qt::QueuedConnection);
 
-        // start AI — same speed as player; ramps up only after player dies
+        // Start AI at player speed; ramps up only after player dies.
         loadNetFromResource(aiView,
             ":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv");
-        aiView->game->snakes[0]->setSpeed(PLAYER_SPEED);
+        aiView->game->snakeAt(0)->setSpeed(PLAYER_SPEED);
         aiView->connectToSnake(0);
         aiView->game->startAIs(0);
 
-        // start player
         playerView->game->startPlayer();
         playerView->connectToSnake(0);
         playerView->currentSnake()->startPlayer(playerView->currentNet());
@@ -303,22 +301,22 @@ void PvEMainWindow::onAiDied(int /*id*/)
     if (state == State::IDLE || state == State::GAME_OVER) return;
 
     if (state == State::RUNNING) {
-        // Player still alive → restart AI at normal speed, game continues
+        // Player still alive → restart AI at normal speed, game continues.
         aiView->game->stop_and_reset();
         loadNetFromResource(aiView,
             ":/Snakes/Release4_Medi-21-Score-147-zikzak-taktik_snake.csv");
-        disconnect(aiView->game->snakes[0], &Snake::died, this, nullptr);
-        connect(aiView->game->snakes[0], &Snake::died, this, &PvEMainWindow::onAiDied,
+        disconnect(aiView->game->snakeAt(0), &Snake::died, this, nullptr);
+        connect(aiView->game->snakeAt(0), &Snake::died, this, &PvEMainWindow::onAiDied,
                 Qt::QueuedConnection);
-        aiView->game->snakes[0]->setSpeed(PLAYER_SPEED);
+        aiView->game->snakeAt(0)->setSpeed(PLAYER_SPEED);
         aiView->connectToSnake(0);
         aiView->game->startAIs(0);
         return;
     }
 
     // state == PLAYER_DEAD → AI finally dies too → GAME_OVER
-    const size_t aiScore     = aiView->game->snakes[0]->getScore();
-    const size_t playerScore = playerView->game->snakes[0]->getScore();
+    const size_t aiScore     = aiView->game->snakeAt(0)->getScore();
+    const size_t playerScore = playerView->game->snakeAt(0)->getScore();
 
     // Stop both games cleanly
     aiView->game->stop_and_reset();
@@ -337,13 +335,13 @@ void PvEMainWindow::onAiDied(int /*id*/)
 void PvEMainWindow::updateScores()
 {
     aiScoreLabel->setText(
-        QString("Score: %1").arg(aiView->game->snakes[0]->getScore()));
+        QString("Score: %1").arg(aiView->game->snakeAt(0)->getScore()));
     aiLengthLabel->setText(
-        QString("Länge: %1").arg(aiView->game->snakes[0]->getLegth()));
+        QString("Länge: %1").arg(aiView->game->snakeAt(0)->getLegth()));
     playerScoreLabel->setText(
-        QString("Score: %1").arg(playerView->game->snakes[0]->getScore()));
+        QString("Score: %1").arg(playerView->game->snakeAt(0)->getScore()));
     playerLengthLabel->setText(
-        QString("Länge: %1").arg(playerView->game->snakes[0]->getLegth()));
+        QString("Länge: %1").arg(playerView->game->snakeAt(0)->getLegth()));
 }
 
 // ===========================================================================
@@ -353,7 +351,7 @@ void PvEMainWindow::speedRamp()
 {
     if (playerDeadRampSpeed < RAMP_MAX_SPEED) {
         playerDeadRampSpeed = qMin(playerDeadRampSpeed * RAMP_MULTIPLIER, RAMP_MAX_SPEED);
-        aiView->game->snakes[0]->setSpeed(playerDeadRampSpeed);
+        aiView->game->snakeAt(0)->setSpeed(playerDeadRampSpeed);
     }
 }
 

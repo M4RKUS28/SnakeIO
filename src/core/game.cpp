@@ -1,6 +1,8 @@
 #include "game.h"
 #include "inputconfig.h"
 
+#include <QDebug>
+
 // ===========================================================================
 //  Constructor
 // ===========================================================================
@@ -8,23 +10,18 @@ Game::Game(const NetworkConfig& cfg, QObject* parent, double speed_game,
            QComboBox* mu_algo, bool pve)
     : QThread(parent),
       cfg(cfg),
-      toDO(NONE),
-      doResetFieldAfterEvolution(false),
       snakes_count(cfg.snakeCount),
-      best(0),
-      mutation_rate(0.0025),
-      mut_range(0.2),
-      fokus(0),
       mu_algo(mu_algo),
       pve(pve)
 {
     gamefield = new GameField(cfg.fieldSize);
 
-    // Build topology string from the NetworkConfig and construct the population
+    // Build topology string from the NetworkConfig and construct the population.
     const std::string topology = InputConfig::buildTopologyString(cfg);
     population = new Population(topology, snakes_count, 0.3, 1);
 
-    // Create one Snake per population member
+    // Create one Snake per population member.
+    // The first half starts at the top of the field, the rest at the bottom.
     snakes = new Snake*[snakes_count];
     for (int i = 0; i < snakes_count; ++i) {
         snakes[i] = new Snake(gamefield, population->netAt(i), this, i,
@@ -33,11 +30,10 @@ Game::Game(const NetworkConfig& cfg, QObject* parent, double speed_game,
         connect(snakes[i], SIGNAL(died(int)), this, SLOT(snake_died(int)));
     }
 
-    // Connect enemies for PvE mode
+    // Wire PvE enemy references: each snake's enemy is its mirror partner.
     if (pve) {
-        for (int i = 0; i < snakes_count; ++i) {
+        for (int i = 0; i < snakes_count; ++i)
             snakes[i]->setEnemy(snakes[snakes_count - 1 - i]);
-        }
     }
 
     connect(this, SIGNAL(finishedEvo()), this, SLOT(auto_restart_ais()));
@@ -45,85 +41,86 @@ Game::Game(const NetworkConfig& cfg, QObject* parent, double speed_game,
 
 Game::~Game()
 {
-    for(int i = 0; i < snakes_count; i++) {
+    for (int i = 0; i < snakes_count; ++i) {
         snakes[i]->requestInterruption();
         snakes[i]->quit();
-        if(!snakes[i]->wait(3000)) {
-            std::cout << "snakes[i]->terminate(); " << i << std::endl;
+        if (!snakes[i]->wait(3000)) {
+            qWarning("Game::~Game: snake %d did not stop in time — terminating", i);
             snakes[i]->terminate();
             snakes[i]->wait(2000);
         }
         delete snakes[i];
     }
-    delete snakes;
+    delete[] snakes;   // array new → array delete
     snakes = nullptr;
 
     delete population;
+    delete gamefield;
 }
 
-void Game::startAIs(int fokus)
+void Game::startAIs(int focusId)
 {
-    for(int i = 0; i < 1000 && this->isRunning(); i++) {
-        usleep(10000);
-        perror("startAIs DELAYED  -> waiting...");
+    // Wait for any previous Game thread iteration to finish before starting new one.
+    for (int i = 0; i < 1000 && this->isRunning(); ++i) {
+        QThread::msleep(10);
+        qWarning("Game::startAIs: thread still running — waiting (%d/1000)", i);
     }
-    if(this->isRunning()) {
-        perror("startAIs FAILED - Starter Thread still running:");
+    if (this->isRunning()) {
+        qWarning("Game::startAIs: FAILED — game thread still running after timeout");
         return;
     }
 
-    toDO = TO_DO::STARTING;
-    this->fokus = fokus;
+    toDO      = ToDo::STARTING;
+    this->fokus = focusId;
     this->start();
 }
 
 void Game::startPlayer()
 {
+    // Player mode: snake threads are started directly from the UI —
+    // the Game thread itself is not used for coordination.
     living_snakes_count = 0;
 }
 
 void Game::stop_and_reset()
 {
-
+    // Stop the Game coordinator thread first.
     this->requestInterruption();
-    if(!this->wait(3000)) {
-        std::cout << "TERMINATING... this" << __FUNCTION__ << std::endl;
+    if (!this->wait(3000)) {
+        qWarning("Game::stop_and_reset: Game thread did not stop in time — terminating");
         this->terminate();
     }
 
+    // Signal all snake threads to stop.
     for (int i = 0; i < snakes_count; ++i) {
-        if(snakes[i]->isRunning()) {
+        if (snakes[i]->isRunning())
             snakes[i]->requestInterruption();
-        }
     }
 
+    // Wait for each snake thread and reset its state.
     for (int i = 0; i < snakes_count; ++i) {
-        if(snakes[i]->isRunning()) {
-            if(!snakes[i]->wait(1000)) {
-                std::cout << "TERMINATING..." << __FUNCTION__ << std::endl;
+        if (snakes[i]->isRunning()) {
+            if (!snakes[i]->wait(1000)) {
+                qWarning("Game::stop_and_reset: snake %d did not stop in time — terminating", i);
                 snakes[i]->terminate();
             }
         }
         snakes[i]->reset();
     }
-    // this->requestInterruption();
-    // if(!this->wait(3000)) {
-    //     std::cout << "TERMINATING... this" << __FUNCTION__ << std::endl;
-    //     this->terminate();
-    // }
 }
 
 void Game::do_evolution()
 {
-    for(int i = 0; i < 1000 && this->isRunning(); i++) {
-        usleep(10000);
-        perror("START EVO DELAYED  -> waiting...");
+    // Wait for the Game thread to be free (it may still be in the STARTING phase).
+    for (int i = 0; i < 1000 && this->isRunning(); ++i) {
+        QThread::msleep(10);
+        qWarning("Game::do_evolution: thread still running — waiting (%d/1000)", i);
     }
-    if(this->isRunning()) {
-        perror("START EVO FAILED - Starter Thread still running:");
+    if (this->isRunning()) {
+        qWarning("Game::do_evolution: FAILED — game thread still running after timeout");
         return;
     }
-    toDO = TO_DO::EVOLUTION_CALCING;
+    toDO = ToDo::EVOLUTION_CALCING;
     this->start();
 }
 
@@ -134,64 +131,39 @@ void Game::setDoResetFieldAfterEvo(bool status)
 
 void Game::auto_restart_ais()
 {
-    //Update settings:
-//    if(ui->radioButtonAutoRate->isChecked()) {
-//        ui->doubleSpinBox_learn_rate->setValue( 1.0 / ( 20 * std::pow(ui->graphicsView->game->population->getEvolutionNum() + ui->spinBox_aut_versch->value() - 0.9 , 0.8 ) ) );
-//        ui->doubleSpinBoxMutRange->setValue   (0.5 *   (1.0 / std::pow(ui->graphicsView->game->population->getEvolutionNum() + ui->spinBox_aut_versch->value()   , 0.2) ));
-//    }
-
-    if(!this->wait(1000)) {
-        std::cout << "auto_restart_ais failed: QThread still evolving!" << std::endl;
+    // Ensure the evolution thread has finished before restarting.
+    if (!this->wait(1000)) {
+        qWarning("Game::auto_restart_ais: evolution thread still running — skipping restart");
         return;
     }
 
-    //reset field
-    if(doResetFieldAfterEvolution)
+    if (doResetFieldAfterEvolution)
         gamefield->reset();
 
-    //start ais
-    // std::cout << "RESTART AIs..." << std::endl;
     startAIs(best);
 }
-
-
-//FastRandom/*std::mt19937*//*minstd_rand*/ generator3(std::random_device{}());
 
 
 void Game::snake_died(int)
 {
     QMutexLocker mutLock(&gameCheckFinishedMutex);
-    living_snakes_count--;
-
-    // bool finished = true;
-    // int ic = 0;
-    // for (int i = 0; i < snakes_count; ++i) {
-    //     if(snakes[i]->getLebt_noch()) {
-    //         finished = false;
-    //         ic++;
-    //     }
-    // }
+    --living_snakes_count;
     emit livingCountChanged(living_snakes_count);
 
-    if(living_snakes_count == 0 /*finished*/) {
+    if (living_snakes_count == 0) {
+        // Find the best-scoring snake of this generation.
         size_t best_score = 0;
-
         for (int i = 0; i < snakes_count; ++i) {
-            if(snakes[i]->getScore() > best_score) {
+            if (snakes[i]->getScore() > best_score) {
                 best_score = snakes[i]->getScore();
                 best = i;
             }
         }
 
-        //ui->highscore->setText( " ID: " + QString::number(hig_score_id) +  " -> Score: " + QString::number(best_score)+ " Länge: " + QString::number(ui->graphicsView->game->snakes[hig_score_id]->getLegth()));
-        //ui->graphicsView->setCurrentBestSnake ( hig_score_id );
-
-        // update ui...
-        emit bestSnakeChanged(best, best_score, snakes[best]->getLegth()); // werte mitsenden..werden in evolute resetet!
-
-        //evolute... (skipped in PvE mode — no evolution, just stop)
+        // Notify UI, then kick off evolution (skipped in PvE — no neuroevolution there).
+        emit bestSnakeChanged(best, static_cast<int>(best_score), snakes[best]->getLegth());
         if (!pve)
-            do_evolution(); // --> Thread->  take some time ->
+            do_evolution();
     }
 }
 
@@ -199,77 +171,71 @@ void Game::run()
 {
     switch (toDO) {
 
-    case NONE:
-        std::cout << " Game Thread with no task!" << std::endl;
+    case ToDo::NONE:
+        qWarning("Game::run: started with no task assigned");
         break;
-    case STARTING:
-        for (int i = 0; i < snakes_count; ++i) {
-            if(snakes[i]->isRunning()) {
-                snakes[i]->requestInterruption();
-            }
-        }
 
+    case ToDo::STARTING: {
+        // Stop any snake threads still running from a previous generation.
         for (int i = 0; i < snakes_count; ++i) {
-            if(snakes[i]->isRunning()) {
-                if(!snakes[i]->wait(1000)) {
-                    std::cout << "TERMINATING..." << __FUNCTION__ << std::endl;
+            if (snakes[i]->isRunning())
+                snakes[i]->requestInterruption();
+        }
+        for (int i = 0; i < snakes_count; ++i) {
+            if (snakes[i]->isRunning()) {
+                if (!snakes[i]->wait(1000)) {
+                    qWarning("Game::run STARTING: snake %d did not stop — terminating", i);
                     snakes[i]->terminate();
                 }
             }
-            // snakes[i]->reset(); in startAI
         }
 
-        if(this->isInterruptionRequested()) {
-            std::cout << "Break Game Thread" << std::endl;
+        if (this->isInterruptionRequested())
             break;
-        }
 
-
-        if(!pve) {
+        // Start the focused snake first (player or AI).
+        if (!pve)
             snakes[fokus]->startAI(population->netAt(fokus));
-        } else
-            this->snakes[fokus]->startPlayer(population->netAt(fokus));
+        else
+            snakes[fokus]->startPlayer(population->netAt(fokus));
+
         living_snakes_count = snakes_count;
-        this->snakes[fokus]->setFokus(true);
+        snakes[fokus]->setFokus(true);
 
-
-
+        // Start all other AI snakes with a tiny stagger to spread CPU load.
         for (int i = 0; i < snakes_count; ++i) {
-            if(i == fokus)
-                continue;
-            if(this->isInterruptionRequested()) {
-                std::cout << "Break Game Thread" << std::endl;
-                break;
-            }
+            if (i == fokus) continue;
+            if (this->isInterruptionRequested()) break;
             snakes[i]->startAI(population->netAt(i));
-            usleep(50);
+            QThread::usleep(50);
         }
         break;
-    case EVOLUTION_CALCING:
-        std::cout << " Evolving... best=" << best << " length=" << snakes[best]->getLegth() << std::endl;
+    }
 
-        if(!mu_algo || mu_algo->currentIndex() == 0) {
+    case ToDo::EVOLUTION_CALCING: {
+        qDebug("Game::run: evolving, best=%u length=%d", best, snakes[best]->getLegth());
+
+        if (!mu_algo || mu_algo->currentIndex() == 0) {
+            // Standard elitist evolution: copy best, mutate rest.
             population->evolve(best, mutation_rate, mut_range);
         } else {
-            for(int i = 0; i < snakes_count; i++)
+            // Simulated-annealing evolution: uses per-snake scores.
+            for (int i = 0; i < snakes_count; ++i)
                 population->scoreMap()[i] = snakes[i]->getScore();
             population->evolveWithSimulatedAnnealing(mutation_rate, mut_range, 0.99);
         }
 
-        std::cout << " Evolved!.. " << std::endl;
-        if(this->isInterruptionRequested()) {
-            std::cout << "Break Game Thread" << std::endl;
+        if (this->isInterruptionRequested())
             break;
-        }
-        // save backup
+
+        // Persist the best network so the user can resume after a crash.
         population->netAt(best)->saveTo("current_best_ai-bak.csv");
 
-        usleep(100);
         emit finishedEvo();
-
         break;
     }
-    toDO = NONE;
+    }
+    toDO = ToDo::NONE;
 }
 
 double Game::getMut_range() const
@@ -296,4 +262,3 @@ void Game::setMutation_rate(double newMutation_rate)
 {
     mutation_rate = newMutation_rate;
 }
-       

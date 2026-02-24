@@ -44,7 +44,6 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
 
   ui->doubleSpinBox_learn_rate->setValue(
       gameViewWithGame->game->getMutation_rate());
-
   gameViewWithGame->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
 
   connect(gameViewWithGame, SIGNAL(textUpdateNeeded()), this,
@@ -63,7 +62,7 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
   const int connCount = InputConfig::totalConnections(s.networkConfig);
   if (connCount <= 2000) {
     viewNet = new ViewNet(
-        gameViewWithGame->game->population->netAt(0),
+        gameViewWithGame->game->getPopulation()->netAt(0),
         QRect(0, 0, 670, 800), 20, false);
     viewNetScene->addItem(viewNet);
 
@@ -124,14 +123,14 @@ MainWindow::MainWindow(StartSettings s, QWidget *parent)
 // ===========================================================================
 bool MainWindow::importFromPrefix(const QString& prefix)
 {
-    // --- Seed ---
+  // --- Load apple seed ---
     QFile ff(prefix + "apple.seed");
     if (!ff.exists() || !ff.open(QFile::ReadOnly)) {
         ui->statusbar->showMessage("Warnung: " + prefix + "apple.seed nicht gefunden", 2000);
         qDebug() << "Warnung: " + prefix + "apple.seed nicht gefunden";
     } else {
-        gameViewWithGame->game->gamefield->setSeed(ff.readAll().toULongLong());
-        qDebug() << "New Seed: " << gameViewWithGame->game->gamefield->getSeed();
+        gameViewWithGame->game->getGamefield()->setSeed(ff.readAll().toULongLong());
+        qDebug() << "New Seed: " << gameViewWithGame->game->getGamefield()->getSeed();
     }
 
     // --- Weights: loadFrom() needs a real filesystem path.
@@ -160,7 +159,7 @@ bool MainWindow::importFromPrefix(const QString& prefix)
         loadPath = snakePath.toStdString();
     }
 
-    if (!gameViewWithGame->game->population
+    if (!gameViewWithGame->game->getPopulation()
             ->netAt(gameViewWithGame->game->getBest())
             ->loadFrom(loadPath)) {
         ui->statusbar->showMessage("Laden fehlgeschlagen!", 2000);
@@ -195,7 +194,7 @@ void MainWindow::setupDemoMode(const StartSettings& /*s*/)
     ui->sliderSpeed->setValue(speedToSlider(800.0));
     ui->labelSpeedVal->setText("800 %");
     for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
-        gameViewWithGame->game->snakes[i]->setSpeed(800.0);
+        gameViewWithGame->game->snakeAt(i)->setSpeed(800.0);
 
     // --- Enable network weight visualization ---
     ui->radioBUpdateViewNet->setChecked(true);
@@ -248,53 +247,27 @@ void MainWindow::bestSnakeChanged(int id, int val, int leng) {
                          " -> Score: " + QString::number(val) +
                          " Länge: " + QString::number(leng));
 
-  // if(ui->radioButtonAutoRate->isChecked()) {
-  //     if(gameViewWithGame->game->population->getEvolutionNum() +
-  //     ui->spinBox_aut_versch->value() > 100)
-  //         gameViewWithGame->game->setMutation_rate(0.08);
-  //     if(gameViewWithGame->game->population->getEvolutionNum() +
-  //     ui->spinBox_aut_versch->value() > 200)
-  //         gameViewWithGame->game->setMutation_rate(0.01);
-  //     if(gameViewWithGame->game->population->getEvolutionNum() +
-  //     ui->spinBox_aut_versch->value() > 300)
-  //         gameViewWithGame->game->setMutation_rate(0.001);
-
-  // }
-
-  // update text to best
+  // Update text to best
   textUpdate();
 
-  // wait for mutation-> free time -> redraw weights!
+  // After each generation, refresh the ViewNet weight labels.
   if (viewNet && ui->radioBUpdateViewNet->isChecked()) {
     viewNet->updateInputLabels(true, 30);
     viewNet->updateOutputLabels(true, true, 30);
-    // Redraw and update weights
     viewNet->updateWeightsLabels();
   }
 }
-
 void MainWindow::evolved() {
-  // Still running — update the start/stop button to reflect "running" state
+  // AIs are running again after evolution — keep Start/Stop in the correct state.
   aiRunning = true;
   ui->pushButtonStartStop->setText("\u23F9  Stop");
 
-  // Update settings:
-  //    if(ui->radioButtonAutoRate->isChecked()) {
-  //        ui->doubleSpinBox_learn_rate->setValue( 1.0 / ( 20 *
-  //        std::pow(gameViewWithGame->game->population->getEvolutionNum() +
-  //        ui->spinBox_aut_versch->value() - 0.9 , 0.8 ) ) );
-  //        ui->doubleSpinBoxMutRange->setValue   (0.5 *   (1.0 /
-  //        std::pow(gameViewWithGame->game->population->getEvolutionNum() +
-  //        ui->spinBox_aut_versch->value()   , 0.2) ));
-  //    }
-
-  // update text
   textUpdate();
   ui->label_count->setText(QString::number(gameViewWithGame->getAi_count()));
   ui->label_10_gen->setText(
-      QString::number(gameViewWithGame->game->population->getEvolutionCount()));
+      QString::number(gameViewWithGame->game->getPopulation()->getEvolutionCount()));
   if (viewNet)
-    viewNet->changeNet(gameViewWithGame->game->population->netAt(
+    viewNet->changeNet(gameViewWithGame->game->getPopulation()->netAt(
         gameViewWithGame->game->getBest()));
 }
 
@@ -332,9 +305,8 @@ void MainWindow::on_pushButton_updateWeights_clicked() {
 }
 
 void MainWindow::newFokus(unsigned int id) {
-  if (viewNet) viewNet->changeNet(gameViewWithGame->game->population->netAt(id));
-  ui->statusbar->showMessage("Du verfolgst nun AI-Snake " + QString::number(id),
-                             1000);
+  if (viewNet) viewNet->changeNet(gameViewWithGame->game->getPopulation()->netAt(id));
+  ui->statusbar->showMessage("Du verfolgst nun AI-Snake " + QString::number(id), 1000);
   ui->label_ai_num->setText(QString::number(id));
 }
 
@@ -344,7 +316,7 @@ void MainWindow::on_sliderSpeed_valueChanged(int value) {
   const double speed = sliderToSpeed(value);
   ui->labelSpeedVal->setText(QString("%1 %").arg(speed, 0, 'f', 0));
   for (int i = 0; i < gameViewWithGame->getAi_count(); ++i)
-    gameViewWithGame->game->snakes[i]->setSpeed(speed);
+    gameViewWithGame->game->snakeAt(i)->setSpeed(speed);
 }
 
 void MainWindow::timerEvent(QTimerEvent *) { QApplication::processEvents(); }
@@ -365,93 +337,22 @@ void MainWindow::on_radioButtonreconnect_clicked(bool checked) {
 #include <QApplication>
 
 void MainWindow::on_pushButton_2_clicked() {
-
-  //    for(int i = 0; i < 500; i++) {
-  //        double in = 0.70;
-  //        double out[2];
-  //        double corect_v[] = {0.35, 0.65};
-
-  //        std::cout << "\n" <<  i << ": -> IN: " << in << std::endl;
-  //        gameViewWithGame->game->population->netAt(0)->feedForward( &in );
-  //        gameViewWithGame->game->population->netAt(0)->getResults( out );
-  //        std::cout << "  -> OUT: {" << out[0] << ", " << out[1]  << "}" <<
-  //        std::endl;
-
-  //        gameViewWithGame->game->population->netAt(0)->backProp( corect_v,
-  //        0.85, 0.05 ); std::cout << "  -> CORRECT: {0.35, 0.65}" <<
-  //        std::endl;
-
-  //        gameViewWithGame->game->population->netAt(0)->feedForward( &in );
-  //        gameViewWithGame->game->population->netAt(0)->getResults( out );
-  //        std::cout << i << ": -> AFTER OUT: {" << out[0] << ", " << out[1] <<
-  //        "}" << std::endl;
-
-  ////        viewNet->updateInputLabels(true, 30);
-  ////        viewNet->updateOutputLabels(true, true, 30);
-  ////        viewNet->updateWeightsLabels();
-
-  //        QApplication::processEvents();
-
-  //        usleep(100 * (i % 100 == 0 ? 10000 : 1));
-
-  //        double in2 = 0.20;
-  //        double out2[2];
-  //        double corect_v2[] = {0.8, 0.2};
-
-  //        std::cout << "\n" <<  i << ": -> IN2: " << in2 << std::endl;
-  //        gameViewWithGame->game->population->netAt(0)->feedForward( &in2 );
-  //        gameViewWithGame->game->population->netAt(0)->getResults( out2 );
-  //        std::cout << "  -> OUT2: {" << out2[0] << ", " << out2[1]  << "}" <<
-  //        std::endl;
-
-  //        gameViewWithGame->game->population->netAt(0)->backProp( corect_v2,
-  //        0.85, 0.05 ); std::cout << "  -> CORRECT2: {0.8, 0.2}" << std::endl;
-
-  //        gameViewWithGame->game->population->netAt(0)->feedForward( &in2 );
-  //        gameViewWithGame->game->population->netAt(0)->getResults( out2 );
-  //        std::cout << i << ": -> AFTER OUT2: {" << out2[0] << ", " << out2[1]
-  //        << "}" << std::endl;
-
-  ////        viewNet->updateInputLabels(true, 30);
-  ////        viewNet->updateOutputLabels(true, true, 30);
-  ////        viewNet->updateWeightsLabels();
-
-  //        QApplication::processEvents();
-
-  //        std::cout << " ERROR: " <<
-  //        gameViewWithGame->game->population->netAt(0)->recentAverrageError()
-  //        << std::endl;
-
-  //        usleep(100 * (i % 100 == 0 ? 10000 : 1));
-  //    }
-
-  //    return;
-
-  // Stop any running AI/evo before starting player mode
+  // Stop any running AI/evo before entering player mode.
   gameViewWithGame->game->stop_and_reset();
   gameViewWithGame->game->startPlayer();
   gameViewWithGame->connectToSnake(gameViewWithGame->getConnected_to());
   gameViewWithGame->currentSnake()->startPlayer(gameViewWithGame->currentNet());
 
-  // Mark as "running" so the Start/Stop button acts as Stop
+  // Mark as "running" so the Start/Stop button acts as Stop.
   aiRunning = true;
   ui->pushButtonStartStop->setText("\u23F9  Stop");
 
-  // Give keyboard focus to the game view so arrow keys are received
+  // Give keyboard focus to the game view so arrow keys are received.
   gameViewWithGame->setFocus();
 }
 
 // void MainWindow::on_radioButtonAutoRate_clicked()
-// {
-// //
-// ui->doubleSpinBox_learn_rate->setDisabled(ui->radioButtonAutoRate->isChecked());
-// //
-// ui->doubleSpinBoxMutRange->setDisabled(ui->radioButtonAutoRate->isChecked());
-// //    if(ui->radioButtonAutoRate->isChecked()) {
-// //        ui->doubleSpinBox_learn_rate->setValue(0.5);
-// //        ui->doubleSpinBoxMutRange->setValue(0.6);
-// //    }
-// }
+// Removed: automatic rate scheduling was never used in the current build.
 
 void MainWindow::on_doubleSpinBox_learn_rate_valueChanged(double arg1) {
   gameViewWithGame->game->setMutation_rate(arg1);
@@ -466,11 +367,11 @@ void MainWindow::on_checkBoxresetapples_stateChanged(int arg1) {
 }
 
 void MainWindow::on_pushButton_3_clicked() {
-  gameViewWithGame->game->gamefield->popBack();
+  gameViewWithGame->game->getGamefield()->popBack();
 }
 
 void MainWindow::on_pushButton_4_clicked() {
-  gameViewWithGame->game->gamefield->addCornerApples();
+  gameViewWithGame->game->getGamefield()->addCornerApples();
 }
 
 void MainWindow::on_pushButton_8_clicked() {
@@ -489,7 +390,7 @@ void MainWindow::on_pushButton_8_clicked() {
 
   auto* list = new QListWidget(&dlg);
   list->setSelectionMode(QAbstractItemView::ExtendedSelection);
-  const QVector<QPoint>& apples = gameViewWithGame->game->gamefield->getApples();
+  const QVector<QPoint>& apples = gameViewWithGame->game->getGamefield()->getApples();
   for (int i = 0; i < apples.size(); ++i) {
     list->addItem(QString("Apfel #%1:  (%2, %3)").arg(i).arg(apples[i].x()).arg(apples[i].y()));
   }
@@ -510,12 +411,12 @@ void MainWindow::on_pushButton_8_clicked() {
       rows.prepend(list->row(item));
     std::sort(rows.begin(), rows.end(), std::greater<int>());
     for (int row : rows) {
-      gameViewWithGame->game->gamefield->removeAppleAt(row);
+      gameViewWithGame->game->getGamefield()->removeAppleAt(row);
       delete list->takeItem(row);
     }
     // Renumber labels
     for (int i = 0; i < list->count(); ++i) {
-      const QVector<QPoint>& a = gameViewWithGame->game->gamefield->getApples();
+      const QVector<QPoint>& a = gameViewWithGame->game->getGamefield()->getApples();
       if (i < a.size())
         list->item(i)->setText(QString("Apfel #%1:  (%2, %3)").arg(i).arg(a[i].x()).arg(a[i].y()));
     }
@@ -526,10 +427,7 @@ void MainWindow::on_pushButton_8_clicked() {
 }
 
 void MainWindow::on_radioButtonShowGrid_clicked(bool checked) {
-  if (checked)
-    gameViewWithGame->grid->show();
-  else
-    gameViewWithGame->grid->hide();
+  gameViewWithGame->setGridVisible(checked);
 }
 
 // on_pushButton_ueber_clicked removed — Über button moved to StartDialog
@@ -562,7 +460,6 @@ void MainWindow::on_pushButton_import_clicked() {
   if (importFromPrefix(d))
     ui->statusbar->showMessage("Erfoglreich geladen!", 2000);
 }
-
 void MainWindow::on_pushButton_export_clicked() {
   auto d = QFileDialog::getSaveFileName(this, "Export Pfad");
   QFile f(d + "_apple.seed");
@@ -575,22 +472,20 @@ void MainWindow::on_pushButton_export_clicked() {
                                   .toUtf8()) != -1;
     fArch.close();
 
-    if (gameViewWithGame->game->population
+    if (gameViewWithGame->game->getPopulation()
             ->netAt(gameViewWithGame->game->getBest())
             ->saveTo(d.toStdString() + "_snake.csv") &&
         f.open(QFile::ReadWrite | QFile::Truncate) &&
         f.write(
-            QString::number(this->gameViewWithGame->game->gamefield->getSeed())
+            QString::number(this->gameViewWithGame->game->getGamefield()->getSeed())
                 .toStdString()
                 .c_str()) != -1) {
       ui->statusbar->showMessage(
           archOk ? "Erfoglreich gespeichert!" : "Gespeichert (arch.json fehlgeschlagen)!",
           2000);
-      qDebug() << "Seed: "
-               << this->gameViewWithGame->game->gamefield->getSeed();
+      qDebug() << "Seed: " << this->gameViewWithGame->game->getGamefield()->getSeed();
     } else {
       ui->statusbar->showMessage("Speichern fehlgeschlagen!", 2000);
     }
   }
 }
-       
