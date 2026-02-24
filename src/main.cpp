@@ -4,7 +4,7 @@
 #include "stylehandler.h"
 #include <QApplication>
 
-QString StartDialog::version = "2.0.0";
+QString StartDialog::version = "2.0.1";
 
 int Snake::snake_init_length = 10;
 int Snake::snake_init_moves = 250;
