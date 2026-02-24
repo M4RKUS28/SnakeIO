@@ -2,6 +2,8 @@
 
 SnakeIO ist eine Qt-Applikation, die eine Population von Snake-KIs mittels **Neuroevolution** trainiert und dabei den gesamten Lernprozess in Echtzeit visualisiert. Das Projekt verbindet echtes maschinelles Lernen mit einem spielbaren Snake-Spiel und erlaubt es, alle Parameter des neuronalen Netzes sowie den Evolutionsprozess direkt über die Oberfläche zu steuern.
 
+![SnakeIO Demo](docs/snakio.gif)
+
 ---
 
 ## Kernidee: Neuroevolution
